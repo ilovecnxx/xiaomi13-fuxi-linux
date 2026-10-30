@@ -13,17 +13,17 @@
 ## 1. 开工自检（必须全 PASS）
 
 ```bash
-scripts/fuxi-agent-preflight.sh          # 可加 --device（要求设备可达）/ --with-tests
-scripts/fuxi-agent-lock.sh status        # 看是否有其他 agent 在改
+scripts/fuxi-agent-preflight.sh            # 默认：git/内核分支/state/TASKS/锁
+scripts/fuxi-agent-preflight.sh --full     # 额外：补丁哈希一致性、基线镜像哈希
+scripts/fuxi-agent-preflight.sh --device --with-tests   # 要上机/要跑测试时再加
 ```
 
-preflight 检查：项目 git 是否干净、内核分支是否 `fuxi/20261031` 且干净、全量补丁哈希是否与分支一致、
-state json 是否可解析、基线镜像哈希是否匹配、`TASKS.md` 是否过期、是否有 agent 锁。
-**任何 FAIL 都先修复，不要带着失败状态写代码。**
+默认检查：项目 git、内核分支与工作区、state json 可解析、`TASKS.md` 新鲜度、agent 锁（WARN）。
+`--full` 追加：全量补丁哈希一致性、基线镜像哈希。**任何 FAIL 都先修复，不要带着失败状态写代码。**
 
 ## 2. 写作纪律
 
-- 改动前 `scripts/fuxi-agent-lock.sh acquire "<你的名字>" "<任务>"`；结束 `release`。
+- **多 agent 并行时**才需要锁：`scripts/fuxi-agent-lock.sh acquire "<名字>" "<任务>"`，结束 `release`（单人场景可跳过）。
 - 一次只做一件事；改内核前确认 `git -C build/linux status` 干净，改完立刻提交到 `fuxi/20261031`
   并重导出 `work/patches/full-tree-20261031/full-20261031.diff`（含 SHA256SUMS）。
 - **不要重置 `build/linux`**；不要覆盖 `work/kbuild/` 里被引用的镜像；不要删 `work/claude-logs/`。

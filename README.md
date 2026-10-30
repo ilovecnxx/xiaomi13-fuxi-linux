@@ -4,30 +4,8 @@
 当前已能从 `recovery_b` 启动主线内核 `7.3.0+` 和 `linux` 分区上的 Ubuntu 26.10；
 普通重启回 Android。最终路线不使用 Android vendor kernel、Halium 或 Android HAL。
 
-**进度入口（2026-10-31）：新会话先读 `TASKS.md`（当前状态/下一步）→ `docs/目标-M5.md` 末节（最新实机结果）。**
-**2026-10-31 02:40 更新：** 设备正运行 **modem16-epmap（#222，实验镜像）**，`recovery_b` 也是它；
-modem keeper 已部署并 active，5G NR 注册 25 min 稳定、零触发；数据通路在该镜像 run1/run2 已打通（~85 Mbit/s），
-但本次启动 rmnet 未建会话。**日用基线仍是 `s2idle2 #207`，测试结束必须刷回并跑健康检查。**
-按用户要求，当前优先完善基本功能，高级驱动接入暂缓。已修复 HTTPS 根证书缺失、浏览器启动退出和竖屏键盘按键过小，
-用户确认放大后可以准确输入，中文输入和文本保存也已确认；本轮记录见 `docs/基本功能修复-20261029.md`。
-**2026-10-29 20:00 更新：** 当时运行 `screen-audio9-host-bindingfix`（`#187`，现已不是当前镜像）。原生 MSM DSI 显示已获用户现场确认画面正常、触控准确；
-Adreno 740 改用 `/odm/firmware` 的小米签名 ZAP 后初始化成功（原先取自 `/vendor/firmware` 的是高通测试签名，TZ 返回 `-22`），
-Phosh 已切到 GPU（FD740）渲染，用户确认明显流畅。随后 `screen120-gputherm`（`#189`）以 120 Hz 运行并接入 GPU 温控，用户确认更顺滑、画面正常，随后 `screen120-regcn`（`#190`）补上 WiFi 管制域支持，`screen120-blfix`（`#191`）修复熄屏时亮度写入报错，`idle2-nohz`（`#193`）开启 CPU 深度空闲与无节拍内核（熄屏电池电流约减半），`mic1`（`#194`）再加入 WCD9385 主麦克风，`ru5sync`（`#199`）去掉全部 `*_ignore_unused` 并修复卡住的 sync_state（熄屏电池电流 117→28.5 mA），`wifi5g`（`#200`）修复 CN 管制域下 5 GHz 不可见，`battsign5`（`#205`）修正电池电流符号并静默固件 0x50 消息，`s2idle1`（`#206`）开启 s2idle 挂起（SoC 首次进入深度睡眠），`s2idle2`（`#207`）修复挂起恢复后 WiFi 管制域回到 US，10-29 当时 recovery_b 即该镜像（2026-10-31 已改为实验镜像，见顶部更新）；空闲自动挂起已用 gschema override 关闭（s2idle 中 WiFi 不能唤醒）。详见 `docs/GPU初始化故障定位-20261029.md` 与 `docs/显示驱动故障定位-20261029.md` 末节。
-`audio-probe4`（`#172`）和原 `recovery_b` 备份仍可回退。
-原有音频配置保留；此前 `audio-probe4`（`#172`）两颗功放独立测试可听，用户已确认桌面四声短音均可听见；
-保护/标定仍未完成，详见 `docs/音频出声修复-20261029.md`。`daily-pm1` 保留作回退，状态见 `work/state/current-device.json`。
-早期 `docs/archive/交接-给CODEX.md`、`docs/archive/交接-给CLAUDE.md` 记录的是历史启动实验，
-不能以其中“尚未启动主线”的旧结论判断当前状态（其余历史交接见 `docs/archive/`）。
-**2026-10-30 14:36 更新：** 计划第 1 项 M5.2 复验通过：设备仍运行 `s2idle2`（#207），自动连接 5 GHz（5180 MHz）、管制域 CN、蓝牙 Powered、Phosh NRestarts=0；
-本轮整机只读健康检查 0 失败，57 项主机回归通过；WiFi/蓝牙五个固件在设备、主机和隔离重生成结果间逐字节一致。日志见 `work/claude-logs/health-20261030-143144.log`、`work/claude-logs/host-regression-20261030-1440.log` 和 `work/claude-logs/m52-firmware-hash-20261030-1430.log`。
-**15:06 实时状态复核：** 设备仍为同一 boot_id 的 #207，systemd `running`、5 GHz/CN、蓝牙 Powered、Phosh NRestarts=0；快照 `work/claude-logs/final-status-20261030-1506.log`。
-基带实验里安装的 `protection-domain-mapper` 已启用，但 #214 仍重复触发 IPA SMEM 断言；计划第 2 项留待后续处理。
-**15:34 只读复验：** `scripts/fuxi-health.sh --require-wifi --require-sensors` 失败 0，主机回归 57 项通过；设备仍是 #207、同一 boot_id，5 GHz/CN、蓝牙 Powered、Phosh NRestarts=0、systemd 无 failed units。日志：`work/claude-logs/health-20261030-153450.log`、`work/claude-logs/host-regression-20261030-latest.log`、`work/claude-logs/final-status-20261030-153450.log`。本轮未重启或刷写；M5.2 固件哈希复现性以 14:30 记录为准。
-**15:48 源码复核与状态：** #214 的 PDR `-6` 在当前代码对应 domain-list 成功返回但没有匹配路径（`-ENXIO`），无应答应为事务超时 `-110`；QRTR 服务公告错误也见于无基带的挂起恢复记录。当前源码确有 `CONFIG_QCOM_PD_MAPPER`（`drivers/soc/qcom/Kconfig:79`、`Makefile:10`、`qcom_pd_mapper.c`），#207 与 modem8 配置均为 `=y`，手机 sysfs 有已绑定的 `qcom_pd_mapper.qcom-pdm-mapper`；用户空间 `protection-domain-mapper` 同时 active（17:39 更正，旧说法“源码没有该项”错误）；用户空间 pd-mapper 安装后故障仍复现。状态快照 `work/claude-logs/final-status-20261030-1544.log`；下一步采集 PDR 响应域列表并定位 PAS `-12`。
-
-**17:40 更新：** 内核 PD mapper 在源码中存在且已启用（更正旧记录）。诊断镜像 `modem9-pdrpasdiag`（#215）编译通过、config/DTB/哈希已核验，尚未上机；手机仍为 #207。详见 `docs/目标-M5.md` 末节。
-
-**21:10 更新：** modem12 第二次启动在 1047 s 进入 IPA 崩溃循环（SMEM 区 SMMU fault），已刷回 #207。完整交接见 `docs/交接-新会话-20261030-2110.md`。
+**进度入口**：`TASKS.md`（当前任务/下一步）→ `work/state/current-device.json`（基线/哈希）→ `docs/目标-M5.md` 末节（最新实机结果）。
+历史更新流水已收敛到 `CHANGELOG.md` 与 `docs/archive/`；本文件只保留：项目简介、能力表、构建/访问、边界与自动化说明。
 
 ## 已有能力与待验收项
 
@@ -37,7 +15,7 @@ Phosh 已切到 GPU（FD740）渲染，用户确认明显流畅。随后 `screen
 | 双系统 | recovery_b 进 Linux，普通启动进 Android；操作见 `docs/双系统启动说明.md` |
 | 显示、触摸、Phosh | screen-audio9 原生 MSM DSI 实物画面与触控位置获用户确认；GPU（FD740）渲染与 120 Hz 已启用并获用户确认；自动熄屏/唤醒与自动亮度已测；旋转待验收 |
 | 基础桌面应用 | Epiphany 软件渲染已显示 HTTPS 网页；中文输入和文本保存获用户确认；文件选择器待验收 |
-| Chromium 浏览器 | Debian arm64 Chromium 150 隔离装到 `/opt/chromium`（非 dpkg、可回退），硬件 GL 渲染；**移动端 UI 层**：注入安卓-Chrome 风顶栏地址药丸 + 底栏 5 键，systemd --user 服务跨重启自启，注册 https 默认；实测服务 active、覆盖层在、截图分区佐证；待用户手指验收。见 `docs/Chromium浏览器移植-20261030.md`、评审请求 `docs/CODEX评审请求-Chromium移动UI-20261030.md` |
+| Chromium 浏览器 | Debian arm64 Chromium 150 隔离装到 `/opt/chromium`（非 dpkg、可回退），硬件 GL 渲染；**移动端 UI 层**：注入安卓-Chrome 风顶栏地址药丸 + 底栏 5 键，systemd --user 服务跨重启自启，注册 https 默认；实测服务 active、覆盖层在、截图分区佐证；待用户手指验收。见 `docs/Chromium浏览器移植-20261030.md`、评审请求 `docs/archive/CODEX评审请求-Chromium移动UI-20261030.md` |
 | 电量 | 可读电量与充电状态；仍需独立确认实际充电和续航 |
 | WiFi、蓝牙 | 10-29 整机重启验收：自动连网、外网/HTTPS 走 WiFi、WiFi SSH、管制域 CN；蓝牙出厂地址与对端 L2CAP 链路通过；蓝牙耳机/A2DP 待验收 |
 | USB 联网、时间 | USB 网络的 DNS 与正常证书校验 HTTPS 已实测；120 个系统根证书，Asia/Shanghai 时区，NTP 已同步 |
@@ -110,7 +88,7 @@ python3 -m unittest discover -s scripts/tests -v
 
 ## 资料入口
 
-- `docs/进展-20261029.md`：本轮改动、实测结果、备份与未完成项。
+- `docs/archive/进展-20261029.md`：本轮改动、实测结果、备份与未完成项。
 - `docs/基本功能修复-20261029.md`：当前基本功能优先级、浏览器、证书、时区、键盘修复与验收边界。
 - `docs/音频出声修复-20261029.md`：当前实际出声、增益修复、用户反馈及保护边界。
 - `docs/音频启动验证-20261029.md`：此前声卡、硬件诊断与实时调度的修复记录。

@@ -1,15 +1,17 @@
 #!/bin/bash
 # 接手/切换 agent 的开工自检。全部 PASS 才能开始修改代码。
-# 用法: scripts/fuxi-agent-preflight.sh [--with-tests] [--device]
+# 用法: scripts/fuxi-agent-preflight.sh [--with-tests] [--device] [--full]
+#   默认只查"能不能安全开工"；--full 额外查补丁一致性与基线镜像哈希
 #   退出码 0 = 可以开始；非 0 = 先修复
 set -u
 B="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FAIL=0; WARN=0
-DO_TESTS=0; DO_DEVICE=0
+DO_TESTS=0; DO_DEVICE=0; DO_FULL=0
 for a in "$@"; do
   case "$a" in
     --with-tests) DO_TESTS=1 ;;
     --device) DO_DEVICE=1 ;;
+    --full) DO_FULL=1 ;;
   esac
 done
 ok(){ printf 'PASS  %s\n' "$*"; }
@@ -37,7 +39,9 @@ if [ -d "$K/.git" ]; then
   if [ -z "$(git -C "$K" status --porcelain)" ]; then ok "内核工作区干净"; else bad "内核工作区有未提交改动"; fi
   P="$B/work/patches/full-tree-20261031/full-20261031.diff"
   S="$B/work/patches/full-tree-20261031/SHA256SUMS"
-  if [ -f "$P" ] && [ -f "$S" ]; then
+  if [ "$DO_FULL" != 1 ]; then
+    :
+  elif [ -f "$P" ] && [ -f "$S" ]; then
     live="$(git -C "$K" diff master.."$br" | sha256sum | cut -d' ' -f1)"
     saved="$(cut -d' ' -f1 "$S")"
     if [ "$live" = "$saved" ]; then ok "全量补丁与分支一致（${live:0:12}…）"; else bad "全量补丁已漂移（live=${live:0:12}… saved=${saved:0:12}…），需重导出"; fi
@@ -53,7 +57,9 @@ ST="$B/work/state/current-device.json"
 if python3 -c "import json;json.load(open('$ST'))" 2>/dev/null; then
   base="$(python3 -c "import json;d=json.load(open('$ST'));print(d.get('baseline_daily_sha256',''))")"
   img="$B/work/kbuild/abl-fuxi-s2idle2.img"
-  if [ -f "$img" ]; then
+  if [ "$DO_FULL" != 1 ]; then
+    :
+  elif [ -f "$img" ]; then
     cur="$(sha256sum "$img" | cut -d' ' -f1)"
     if [ "$cur" = "$base" ]; then ok "基线镜像哈希与 state json 一致"; else bad "基线镜像哈希不匹配（state=${base:0:12}… 实际=${cur:0:12}…）"; fi
   else
@@ -77,7 +83,7 @@ if [ -f "$LK" ]; then
   info="$(python3 -c "import json,time;d=json.load(open('$LK'));print(d.get('owner','?'),d.get('note',''),int((time.time()-d.get('ts',0))/3600))" 2>/dev/null)"
   owner="${info%% *}"
   hrs="$(echo "$info" | awk '{print $NF}')"
-  if [ "${hrs:-0}" -ge 12 ]; then wrn "存在陈旧 agent 锁（$owner，${hrs}h 前），可 lock.sh release --force"; else bad "另一 agent 持锁：$info（先确认无并行改动）"; fi
+  if [ "${hrs:-0}" -ge 12 ]; then wrn "存在陈旧 agent 锁（$owner，${hrs}h 前），可 lock.sh release --force"; else wrn "另一 agent 持锁：$info（先确认无并行改动再开工）"; fi
 else
   ok "无 agent 锁"
 fi

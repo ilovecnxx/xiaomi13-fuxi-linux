@@ -41,6 +41,23 @@ for f in "$B"/docs/*.md; do
   cp -f "$f" docs/
 done
 
+# 清理发布树中本地已不存在的 docs（保持发布内容与本地白名单一致）
+KEEP=""
+for f in "$B"/docs/*.md; do
+  [ -f "$f" ] || continue
+  base=$(basename "$f")
+  echo "$base" | grep -qE "$EXCLUDE_DOC_RE" && continue
+  KEEP="$KEEP $base"
+done
+for f in docs/*.md; do
+  [ -f "$f" ] || continue
+  base=$(basename "$f")
+  case " $KEEP " in
+    *" $base "*) ;;
+    *) rm -f "docs/$base"; echo "pruned docs/$base" ;;
+  esac
+done
+
 # research
 for f in "$B"/research/*.md; do
   [ -f "$f" ] || continue

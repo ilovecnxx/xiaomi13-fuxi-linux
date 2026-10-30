@@ -13,7 +13,7 @@
   "linux_ssh_return_seconds": 20,
   "recovery_backup": "work/backup/daily-pm-20261029/recovery_b-before.img",
   "verification_log": "work/claude-logs/roundtrip-daily-pm1-20261029.log",
-  "report": "docs/进展-20261029.md",
+  "report": "docs/archive/进展-20261029.md",
   "remaining_issues": [
     "Sensor physical orientation, proximity transitions and desktop actions not validated; firmware mount matrix is zero",
     "DSP temporary/calibration writes remain denied; long-term sensor operation and suspend/resume not validated",
