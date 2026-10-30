@@ -6,12 +6,12 @@
 #   4. 部署固件、work/rootfs-overlay（fuxi-firmware-devices.service 取代 fuxi-remoteproc.service），
 #      NetworkManager 不接管 usb0，apt 装 iw/wireless-regdb/bluez/wpasupplicant/network-manager
 #   5. 启动服务，检查 ADSP、wlan0（扫描）、hci0
-# 用法: scripts/fuxi-m5-wifi-bt.sh [镜像，默认 work/kbuild/abl-fuxi-daily-pm1.img]
+# 用法: scripts/fuxi-m5-wifi-bt.sh [镜像，默认 work/kbuild/abl-fuxi-s2idle2.img]
 # 日志: work/claude-logs/m5-wifi-bt-<时间>.log
 set -u
 B="$(cd "$(dirname "$0")/.." && pwd)"
 ADB="$B/tools/platform-tools/adb"
-IMG="${1:-$B/work/kbuild/abl-fuxi-daily-pm1.img}"
+IMG="${1:-$B/work/kbuild/abl-fuxi-s2idle2.img}"
 LOG="$B/work/claude-logs/m5-wifi-bt-$(date +%Y%m%d-%H%M%S).log"
 exec > >(tee -a "$LOG") 2>&1
 say() { echo "$(date +%T) $*"; }

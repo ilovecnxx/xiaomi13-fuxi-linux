@@ -1,4 +1,6 @@
 #!/bin/bash
+# ⚠ 历史脚本（10-27 的早期自动测试链），里面的镜像名（pm2/daily-pm1/modem3）已过时；
+#   当前流程见 TASKS.md 与 scripts/fuxi-health.sh。保留仅供追溯。
 # 不需要人看/听的上机测试串起来跑（每个都会自己写 recovery_b、进对应镜像；手机在 Ubuntu 时自动先回 Android）：
 #   1. 调频/温控（abl-fuxi-pm2）  2. 传感器 hexagonrpcd + ssccli（abl-fuxi-daily-pm1）
 #   3. 重编带 SSC 的 iio-sensor-proxy（留在 daily-pm1 的 Ubuntu 里编）  4. 基带首次启动（abl-fuxi-modem3）

@@ -148,12 +148,27 @@ record = {
     "kernel_commit": subprocess.check_output(
         ["git", "-C", str(kernel), "rev-parse", "HEAD"], text=True
     ).strip(),
+    "kernel_branch": subprocess.check_output(
+        ["git", "-C", str(kernel), "rev-parse", "--abbrev-ref", "HEAD"], text=True
+    ).strip(),
     "kernel_tracked_changes": bool(subprocess.check_output(
         ["git", "-C", str(kernel), "status", "--porcelain", "--untracked-files=no"], text=True
     ).strip()),
     "sha256": {key: hashlib.sha256(path.read_bytes()).hexdigest()
                for key, path in files.items()},
 }
+# 可复现性指纹：记录 dirty diff 的 sha256 与未跟踪文件清单，
+# 避免两份不同工作树生成一模一样的 build.json（旧版只有布尔值）。
+_dirty = subprocess.run(["git", "-C", str(kernel), "diff", "HEAD"],
+                        capture_output=True, text=True).stdout
+_untracked = subprocess.run(["git", "-C", str(kernel), "ls-files", "--others",
+                             "--exclude-standard"],
+                            capture_output=True, text=True).stdout.splitlines()
+record["kernel_dirty_diff_sha256"] = (
+    hashlib.sha256(_dirty.encode()).hexdigest() if _dirty.strip() else "")
+record["kernel_untracked_files"] = _untracked[:200]
+record["kernel_untracked_count"] = len(_untracked)
+record["kernel_clean"] = (not _dirty.strip()) and not _untracked
 out.with_suffix(".build.json").write_text(json.dumps(record, indent=2) + "\n")
 PY
 fi

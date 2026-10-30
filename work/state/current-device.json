@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-10-31T02:38+08:00",
+  "as_of": "2026-10-31T02:50+08:00",
   "timezone": "Asia/Shanghai",
   "device": "Xiaomi 13 fuxi",
   "state": "2026-10-31 02:38 CST：设备运行 modem16-epmap（#222，boot_id aba309f0…，uptime 25min）；fuxi-modem-keeper 已部署且 active，开机 28s 设 data-centric；5G NR home 稳定 25 分钟、零触发；本次启动 rmnet 未建立数据会话；recovery_b 当前为 modem16 实验镜像，收尾必须刷回 s2idle2（#207）。",
@@ -159,15 +159,19 @@
     "work/claude-logs/flash-wifi5g-20261029.log"
   ],
   "remaining": [
-    "Screen rotation vs. accelerometer orientation (physical); 90 Hz / dynamic refresh.",
-    "Sustained GPU load thermals and GPU recovery after blank/wake; camera and modem.",
-    "Unplugged measurement of CXSD/AOSD sleep and battery drain (physical); then s2idle suspend.",
-    "Cold-boot regression before promoting screen-audio9 + GPU to daily baseline.",
-    "File picker UI interaction and Pinyin default-mode persistence after reboot.",
-    "M5 item 1: boot unplugged with Vol+ + Power (physical).",
-    "Wall charger (DCP/PD) real charging verification (physical).",
-    "Bluetooth headset pairing + A2DP audio; Xiaomi RF calibration.",
-    "Second microphone (AMIC mapping), headset path (MBHC/USB-C mux), speaker protection/calibration."
+    "蜂窝注册稳定性：EMM cause 7 / 无 IMS，只有射频 low→on 能恢复 → 最终解是 VoLTE/IMS",
+    "短信、通话、双卡（slot1 联通 / slot2 电信 / 移动卡待测）",
+    "rmnet 数据会话建立（本次启动 rmnet_ipa0 DOWN，需确认是未发起连接还是 MM net port）",
+    "keeper ≥1h 长测 + 无 keeper 对照",
+    "相机（仅调研与诊断，不可用）",
+    "GNSS/定位（未开始，路线图原先未覆盖）",
+    "屏幕旋转 / 90Hz 动态刷新",
+    "PD/墙充快充、拔线待机电流（物理操作）",
+    "蓝牙耳机 A2DP（需用户）",
+    "拔线开机 M5-1（物理操作）",
+    "s2idle 自动挂起与 WiFi 唤醒",
+    "扬声器保护/标定、Mic2 用户实录确认",
+    "冷启动/长跑回归与发布门槛"
   ],
   "regression_tests_passed": 57,
   "previous_boot_id": "4178da53 (modem16 run2)",
@@ -297,7 +301,7 @@
       "ui_acceptance": "not tested"
     }
   },
-  "updated_at": "2026-10-31T02:38+08:00",
+  "updated_at": "2026-10-31T02:50+08:00",
   "secondary_fallback_image": "work/kbuild/abl-fuxi-daily-pm1.img",
   "validation_scope": "s2idle2 #207: WiFi+sensor health check, 5 GHz association, CN regulatory domain, Bluetooth powered, Phosh restart count, and 57 host regression tests verified 2026-10-30; cold-boot and long-run regression remain pending.",
   "health_with_sensors_current_image_verified": true,
@@ -495,7 +499,7 @@
     "screenshot": "work/claude-logs/chromium-20261030/ui-final.png",
     "as_of": "2026-10-30T01:48:00+08:00"
   },
-  "handoff": "docs/交接-新会话-20261030-0220.md",
+  "handoff": "TASKS.md（完整交接用 /handoff 生成；旧交接在 docs/archive/）",
   "last_health_log": "work/claude-logs/health-20261031-020401.log（#207，02:04）",
   "modem_notes": {
     "modem10_dma32": "#216: ZONE_DMA/DMA32 fixes recovery PAS -12 (3 recoveries ok); IPA SMEM 45056 assert unchanged; restored #207"
@@ -503,7 +507,7 @@
   "recovery_b_image": "work/kbuild/abl-fuxi-modem16-epmap.img",
   "recovery_b_sha256": "20ac77941ddbad7d283c3681e16a31eadef71cb1486f6ffb7f0276cf03fe76ef",
   "last_health_failures": 0,
-  "updated": "2026-10-31T02:38+08:00",
+  "updated": "2026-10-31T02:50+08:00",
   "last_modem_trial": "modem16-epmap #222：ipa_data-v5.5.c 端点 AP_MODEM_RX 23→24、MODEM_AP_RX 21→22；rmnet 下行打通（run1/run2：ping v4/v6、HTTPS、~85Mbit/s）；两轮各约 1263/1279s 无 SMMU/FATAL/崩溃；注册仍不稳（run1 68 采样 connected 22；run2 214s EMM cause 7、318s 掉线），只有 SetPowerState low→on 能恢复。2026-10-31 02:09 起部署 keeper 做长测，见 modem_keeper。",
   "recovery_b_note": "2026-10-31 02:09 刷入 modem16 实验镜像；测试结束后必须恢复 s2idle2（sha 186e102f…cd69）",
   "baseline_daily_image": "work/kbuild/abl-fuxi-s2idle2.img",
@@ -530,5 +534,15 @@
     "action": "被拒/掉线后 Enable(false)→SetPowerState(low)→on→Enable(true)，再重设 data-centric",
     "run1": "2026-10-31 02:09–02:38+，uptime 25min，零网络拒绝、零 radio cycle",
     "still_needed": "≥1h 长测 + 无 keeper 对照；本次启动 rmnet 未建会话，数据通路需另测"
-  }
+  },
+  "kernel_repro": {
+    "branch": "fuxi/20261031",
+    "commit": "c3890463ba031c515e577113616a813fcc199ed0",
+    "base_commit": "5b0764a53235d3c77e1ed674e836e1b3fe1a4b1f",
+    "full_patch": "work/patches/full-tree-20261031/full-20261031.diff",
+    "full_patch_sha256": "97fc94da6a78d1e681650897b4b34b07a91386fd4dd99f79da51d42b75f8cc81",
+    "verified": "反向 apply --check 通过（2026-10-31）"
+  },
+  "build_manifest": "docs/kbuild-镜像清单-20261031.md",
+  "legacy_notes": "docs/历史遗留与清理记录-20261031.md"
 }

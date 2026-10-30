@@ -46,6 +46,7 @@ Phosh 已切到 GPU（FD740）渲染，用户确认明显流畅。随后 `screen
 | 音频 | 两颗 CS35L41 可听（用户确认）；主麦克风经扬声器回环测试通过（#194）；第二麦克风（AMIC5→ADC4→SWR_MIC1，PipeWire profile 3）回环通过，待用户实录确认；耳机、保护标定待做 |
 | 蜂窝 | **数据通路已打通**（modem16 #222，run1/run2：ping v4/v6、HTTPS、~85 Mbit/s）；注册稳定性未解决；IMS/VoLTE、短信、通话、双卡未开始 |
 | 相机 | 仅有调研与诊断材料，不可用 |
+| 定位/GNSS | 未开始（路线图原先未覆盖，已列入 remaining） |
 
 WiFi 当前使用上游固件和参考板标定，小米标定的兼容性仍待解决。
 日常基线镜像（`s2idle2 #207`）已启用 CPU 深度空闲、NO_HZ_IDLE，并关闭无主时钟/电源、强制 sync_state；M5.2（WiFi/蓝牙）已于 10-30 02:15 完成重启复验；s2idle 挂起可用（rtcwake 与电源键唤醒，挂起中 CXSD/AOSD 计数增长），但空闲自动挂起关闭、WiFi 唤醒未做，续航目标未完成。
@@ -118,6 +119,8 @@ python3 -m unittest discover -s scripts/tests -v
 - `docs/音频调研.md`、`docs/相机调研.md`、`docs/蜂窝调研.md`、`docs/传感器调研.md`：功能诊断。
 - `build/linux/`：含本机未提交改动的内核源码；不要重置或用旧脚本覆盖。
 - `work/rootfs-overlay/`：用户空间服务与配置；`work/claude-logs/`：构建和实机日志。
+- `docs/kbuild-镜像清单-20261031.md`：225 个镜像的清单/引用状态/哈希与保留策略。
+- `docs/历史遗留与清理记录-20261031.md`：本轮收尾处理的历史遗留项与保留说明。
 
 
 ## 版本管理与自动发布
@@ -142,3 +145,11 @@ scripts/git-autosync.sh --status     # 最近提交 / 发布仓库 / 日志
   由 `scripts/publish-progress.sh` 推送到 `work/gh-publish`（该目录在 `.gitignore` 内，不重复入库）
 - 日志：`work/claude-logs/git-autosync.log`
 - 暂停自动同步：`crontab -e` 删除 `git-autosync.sh` 那一行
+
+## 内核源码与可复现性
+
+- 内核源码在 `build/linux`（torvalds 主干 clone），累计移植改动已提交到本地分支 **`fuxi/20261031`**（基于 `5b0764a53`）。
+- 全量补丁：`work/patches/full-tree-20261031/full-20261031.diff`（6027 行，含 `SHA256SUMS`，反向 apply 校验通过）。
+- `.build.json` 现在记录 `kernel_branch` / `kernel_dirty_diff_sha256` / `kernel_untracked_files` / `kernel_clean`；
+  构建前确认内核树干净，否则记下 dirty-diff 指纹。
+- 镜像清单与保留策略：`docs/kbuild-镜像清单-20261031.md`；历史遗留处理：`docs/历史遗留与清理记录-20261031.md`。

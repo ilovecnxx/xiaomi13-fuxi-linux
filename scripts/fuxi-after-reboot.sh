@@ -21,14 +21,14 @@ wifi_connect() {
 
 # 步骤名|命令（在 B 下执行）|说明
 STEPS=(
-  "wifi-bt|scripts/fuxi-m5-wifi-bt.sh|WiFi/蓝牙部署与验证（daily-pm1）"
+  "wifi-bt|scripts/fuxi-m5-wifi-bt.sh|WiFi/蓝牙部署与验证（基线 #207）"
   "wifi-connect|wifi_connect|连 WiFi（FUXI_WIFI_SSID/PSK）"
-  "pm|scripts/fuxi-m6-pm.sh|调频/温控（pm2）"
-  "sensors|scripts/fuxi-sensors.sh|hexagonrpcd + ssccli（daily-pm1）"
+  "pm|scripts/fuxi-m6-pm.sh|调频/温控"
+  "sensors|scripts/fuxi-sensors.sh|hexagonrpcd + ssccli（基线 #207）"
   "sensors-proxy|scripts/fuxi-sensors-proxy.sh|重编带 SSC 的 iio-sensor-proxy"
   "phosh|scripts/fuxi-m5-phosh.sh \"\${FUXI_PIN:-}\"|Phosh 手机界面（PIN 由 FUXI_PIN 传入，没给就跳过）"
   "display|scripts/fuxi-m6-display.sh|原生显示 + GPU（需要看屏幕）"
-  "modem|scripts/fuxi-m5-modem.sh|基带首次启动（modem4）"
+  "modem|scripts/fuxi-m5-modem.sh|基带启动/诊断（modem16+）"
   "audio1|scripts/fuxi-m6-audio.sh work/kbuild/abl-fuxi-audio4.img|扬声器（需要听）"
   "audio2|scripts/fuxi-m6-audio.sh work/kbuild/abl-fuxi-audio3.img|麦克风（需要说话）"
   "usbc|scripts/fuxi-m6-usbc.sh|USB-C OTG/USB3（需要插拔）"
