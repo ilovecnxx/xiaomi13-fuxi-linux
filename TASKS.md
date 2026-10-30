@@ -1,40 +1,39 @@
-## Handoff — 2026-10-31 02:40 基带注册稳定性 + modem keeper 首轮
+## Handoff — 2026-10-31 03:25 充电/电池事件 + 暂停 Denial
 
-### 目标
-- 小米 13（fuxi）主线 Linux 蜂窝：IPA 数据通路 → LTE/5G 注册稳定 → 短信、通话、双卡。
+### 当前优先级
+- **充电/电池**（用户 03:21 指示「把充电和电池弄好」）：手机已因 1% 电量关机，先让用户插 67W 充电器充电，
+  回 Linux 后实测 PD 快充。详见 `docs/充电电池事件-20261031.md`。
+- **Denial 桌面迁移已暂停**：构建进程已杀、teammate 已中断；产物尚未生成（只有源码/依赖/缓存）。
+  恢复条件：手机回 Linux + 充电正常后再决定是否继续。方案文档 `docs/桌面换Denial-20261031.md`，
+  集成脚本 `scripts/fuxi-denial.sh` 已写好未实机用。
 
-### 设备当前实况（2026-10-31 02:38 实测）
-- 运行 **modem16-epmap #222**（`work/kbuild/abl-fuxi-modem16-epmap.img`，sha256 `20ac7794…76ef`），
-  boot_id `aba309f0-4f6c-4961-939a-867ac98bf446`，uptime 25 min。**这是实验镜像，不是日用基线**。
-- **baseline = s2idle2 #207**（sha256 `186e102f…cd69`）；recovery_b 当前是 modem16，测试结束必须刷回。
-- `fuxi-modem-keeper.service` **enabled + active**（02:08 部署，02:09 起运行）：开机 28s 设 data-centric，
-  被拒/掉线后做射频 low→on 循环。**run1 已 25 min：注册全 home、零网络拒绝、零触发**。
-- ModemManager = 补丁版 `/usr/local/lib/fuxi-mm/src/ModemManager`（02:09 启动）。
-- 调制解调器：registered / home / **5G NR** / CHN-UNICOM / packet attached。
-- **本次启动 rmnet 未建立数据会话**（`rmnet_ipa0 DOWN`）；ping 走的是 WiFi。下行能力在 modem16 run1/run2 已验证。
+### 设备当前实况（2026-10-31 03:24）
+- **手机已关机**（电量 1% 耗尽）。关机前运行 #222 modem16-epmap 实验镜像；主机 lsusb 看到 `05c6:f000`。
+- 关机原因：手机接电脑 USB（500mA）跑 Denial 构建（8×clang，整机 ~2A），把电耗到 1%。
+- 之前基线仍是 **s2idle2 #207**（sha256 `186e102f…cd69`）；recovery_b 上是 modem16 #222，测试结束必须刷回。
 
 ### 已完成（证据）
-- modem16 数据通路：`ipa_data-v5.5.c` 端点 `AP_MODEM_RX` 23→24、`MODEM_AP_RX` 21→22；run1/run2 各约 1263/1279 s
-  无 SMMU fault / FATAL IPA / 崩溃；ping v4+v6、HTTPS、~85 Mbit/s。补丁 `work/patches/modem16-epmap-20261031/`。
-- keeper 部署与首轮运行，证据 `work/claude-logs/modem16-keeper-run1-20261031/summary.txt`。
-- 日用基线能力（#207）：显示 120Hz+GPU+触控、WiFi 5G/CN/SSH、蓝牙 L2CAP、双功放+双麦回环、五类传感器、
-  熄屏 28.5 mA、s2idle 可挂起、Phosh/中文输入/Chromium 移动 UI —— 详见 `README.md` 与 `docs/目标-M5.md`。
+- 充电诊断：电池 `M3_4500mah_67w`（67W）、健康 75%、循环 1155；USB 口 SDP 5V/500mA；
+  杀构建后电池由 -1.977A 转 +255mA（qcom_battmgr.c 的 Xiaomi 电流方向补丁生效）。
+- Denial 构建进展（已中断，未产出可安装产物）：依赖装齐、bootstrap 完成、engine 构建开始即被停。
+  源码 `/home/fuxi/denial-src`（v0.5.1）、缓存 `/home/fuxi/denial-cache`、日志 `/home/fuxi/denial-logs` 保留在手机。
+- 集成脚本 `scripts/fuxi-denial.sh`（install/check/switch/rollback/shot/status 等）已写好、语法校验通过，
+  `denial.service` 单元经 `systemd-analyze verify` 通过；**尚未实机安装/切换**。
 
 ### 仍存问题
-- **注册稳定性未解决**：run1/run2 在 214–318 s 掉线；根因指向 **EMM cause 7（EPS services not allowed）+ 无 IMS/VoLTE**，
-  只有 `SetPowerState low→on` 能恢复；keeper 是否真有效需长测对照。
-- **数据会话未建立**：本次启动 rmnet DOWN，需确认是"未发起连接"还是 MM net port 问题。
-- IMS/VoLTE、短信、通话、双卡未开始。
+- 充电/电池：PD 快充未在 Linux 验证；关机前 USB_TYPE=Unknown、INPUT_CURRENT_LIMIT 偏低待查。
+- 蜂窝（原有，未变）：注册稳定性、IMS/VoLTE、短信/通话/双卡。
+- Denial：构建未完成。
 
 ### 已尝试且失败（不要重复）
-- data-centric 单独无效（modem12）；MM disable/enable 无效。
-- modem13 SMEM 整段映射：SMMU fault 未复现，但基带崩一次后恢复失败循环。
-- modem14 崩溃时 HALT GSI：时机错（基带仍在用通道，`-11/-110`）。
-- modem15 offline 后 halt：SSR 恢复成功，但下行 RX 恒 0。
-- 详见 `docs/目标-M5.md` 10-30 21:10 ～ 10-31 01:55 各节。
+- 手机接电脑 USB 跑全核构建 → 电量耗尽关机（不要再在电脑 USB 供电下跑长构建）。
+- 其余历史失败见 AGENTS.md 第 0 节与 `docs/目标-M5.md` 各节。
 
 ### 下一步先做什么
-1. 继续 keeper 长测到 **≥1 h**，并做一次**无 keeper 对照**（同一 SIM、同一位置）。
-2. 采数据会话：`mmcli -m any --simple-connect` 或 NM 连接后确认 `rmnet_ipa0` 起来、ping 走 rmnet。
-3. 测试结束：刷回 `s2idle2 #207` → `scripts/fuxi-health.sh --require-wifi --require-sensors` 必须失败 0。
-4. 评估 VoLTE/IMS 路线（注册稳定性的最终解）。
+1. **用户插 67W 充电器**（或先电脑 USB 慢充到能开机），充几分钟。
+2. 关机状态 **音量上 + 电源** 进 Linux（`docs/双系统启动说明.md`）。
+3. SSH 恢复后：
+   - 实测 PD 充电：插 67W 头看 `qcom-battmgr-usb` 的 VOLTAGE_NOW/USB_TYPE/INPUT_CURRENT_LIMIT，
+     电池 CURRENT_NOW 是否几 A 级；不达标则查 charger_pd（ADSP）与 pmic_glink。
+   - 健康检查 `scripts/fuxi-health.sh`（当前 recovery_b 是实验镜像 #222，先确认跑的是哪个再决定刷回 #207）。
+4. 充电/电池验证 OK 后，再决定是否继续 Denial 迁移（需用户确认）。

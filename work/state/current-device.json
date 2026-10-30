@@ -1,11 +1,11 @@
 {
-  "as_of": "2026-10-31T02:50+08:00",
+  "as_of": "2026-10-31T03:25+08:00",
   "timezone": "Asia/Shanghai",
   "device": "Xiaomi 13 fuxi",
   "project_goal": "Reach stable daily-use Linux on Xiaomi 13 fuxi through source-backed driver fixes, reproducible builds, staged validation and rollback-safe releases.",
   "roadmap": "docs/手机日用目标-路线图-20261029.md",
-  "updated_at": "2026-10-31T02:50+08:00",
-  "updated": "2026-10-31T02:50+08:00",
+  "updated_at": "2026-10-31T03:25+08:00",
+  "updated": "2026-10-31T03:25+08:00",
   "baseline_daily_image": "work/kbuild/abl-fuxi-s2idle2.img",
   "baseline_daily_sha256": "186e102f905dd2bbb5c3636e7f393aedb77191bbcc6b04010344d56290a4cd69",
   "recovery_b_image": "work/kbuild/abl-fuxi-modem16-epmap.img",
@@ -16,17 +16,12 @@
   "boot_id": "aba309f0-4f6c-4961-939a-867ac98bf446",
   "previous_boot_id": "4178da53 (modem16 run2)",
   "device_current": {
-    "as_of": "2026-10-31T02:38+08:00",
-    "kernel": "#222 modem16-epmap",
-    "boot_id": "aba309f0-4f6c-4961-939a-867ac98bf446",
-    "image": "work/kbuild/abl-fuxi-modem16-epmap.img",
-    "image_sha256": "20ac77941ddbad7d283c3681e16a31eadef71cb1486f6ffb7f0276cf03fe76ef",
-    "image_flashed_to_recovery_b": "2026-10-31 02:09",
-    "modemman": "补丁版 /usr/local/lib/fuxi-mm/src/ModemManager（02:09 启动）",
-    "network": "registered/home/5G NR/CHN-UNICOM/packet attached；连续 25min 采样全 home",
-    "data_session": "rmnet_ipa0 DOWN，本次启动未建立数据会话（ping 走 WiFi wlp1s0）",
-    "keeper": "fuxi-modem-keeper enabled+active，自 02:09:00 起，零触发",
-    "collect_evidence": "work/claude-logs/modem16-keeper-run1-20261031/summary.txt"
+    "as_of": "2026-10-31T03:25+08:00",
+    "state": "OFF / powered down (battery drained to 1% during Denial build on PC USB)",
+    "kernel": "unknown (last: #222 modem16-epmap before shutdown)",
+    "last_boot_id": "aba309f0-4f6c-4961-939a-867ac98bf446 (before shutdown)",
+    "host_usb_enum": "05c6:f000 (Qualcomm) — no Linux gadget",
+    "note": "需插 67W 充电器充电后，音量上+电源 进 Linux（recovery_b 仍是 modem16 #222，实验结束刷回 s2idle2 #207）"
   },
   "modem_keeper": {
     "source": "scripts/fuxi-modem-keeper.py（部署副本 work/deploy/modem-keeper-20261031/）",
@@ -54,7 +49,7 @@
     "扬声器保护/标定、Mic2 用户实录确认",
     "冷启动/长跑回归与发布门槛"
   ],
-  "priority": "蜂窝：① keeper 长测 ≥1h + 无 keeper 对照；② 确认 rmnet 数据会话建立条件（本次启动未建）；③ 注册稳定性根因指向无 IMS/VoLTE（EMM cause 7），IMS 是最终解。收尾：刷回 s2idle2 #207 并跑 fuxi-health.sh。",
+  "priority": "充电/电池：先充上电→回 Linux→实测 PD 快充（qcom-battmgr-usb 应变成 PD 9V/20V 几A）→ 健康检查；Denial 迁移已暂停。",
   "handoff": "TASKS.md（完整交接用 /handoff 生成；旧交接在 docs/archive/）",
   "last_health_log": "work/claude-logs/health-20261031-020401.log（#207，02:04）",
   "kernel_repro": {
@@ -70,5 +65,6 @@
   "build_manifest": "docs/kbuild-镜像清单-20261031.md",
   "legacy_notes": "docs/历史遗留与清理记录-20261031.md",
   "reachable": "USB 10.42.0.x 与 WiFi SSH 均可达",
-  "device_details": "docs/设备详情快照-20261030.md"
+  "device_details": "docs/设备详情快照-20261030.md",
+  "last_charging_event": "docs/充电电池事件-20261031.md"
 }
