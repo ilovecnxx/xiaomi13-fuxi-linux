@@ -60,6 +60,13 @@ for f in "$B"/scripts/*.sh; do
   cp -f "$f" scripts/
 done
 
+# rootfs-overlay：用户空间配置快照，镜像同步（远程只读展示用）
+if command -v rsync >/dev/null 2>&1; then
+  rsync -a --delete "$B/work/rootfs-overlay/" rootfs-overlay/ 2>/dev/null || true
+else
+  mkdir -p rootfs-overlay && cp -a "$B/work/rootfs-overlay/." rootfs-overlay/ 2>/dev/null || true
+fi
+
 # 可选镜像（默认关闭）
 if [ "${FUXI_PUBLISH_IMAGES:-0}" = "1" ]; then
   mkdir -p boot-images
@@ -75,6 +82,10 @@ fi
 
 # PROGRESS.md 由人工维护（不在此覆盖），若缺失才生成占位
 [ -f PROGRESS.md ] || printf '# fuxi 主线移植进度\n\n见 docs/。\n' > PROGRESS.md
+
+# 重建 SHA256SUMS（仓库内全部文件，排除自身与 .git），保证校验始终对应当前内容
+find . -type f ! -path './.git/*' ! -name SHA256SUMS -print0 | sort -z \
+  | xargs -0 sha256sum > SHA256SUMS 2>/dev/null || true
 
 git add -A
 git -c user.name="fuxi-agent" -c user.email="fuxi-agent@local" commit -q -m "$MSG" || { echo "无改动"; exit 0; }
