@@ -153,3 +153,14 @@ scripts/git-autosync.sh --status     # 最近提交 / 发布仓库 / 日志
 - `.build.json` 现在记录 `kernel_branch` / `kernel_dirty_diff_sha256` / `kernel_untracked_files` / `kernel_clean`；
   构建前确认内核树干净，否则记下 dirty-diff 指纹。
 - 镜像清单与保留策略：`docs/kbuild-镜像清单-20261031.md`；历史遗留处理：`docs/历史遗留与清理记录-20261031.md`。
+
+## 切换 agent / 接力开发（必读）
+
+任何 agent（Claude Code / Codex / DSH / 其他）接手本项目，先按 [`AGENTS.md`](AGENTS.md) 执行：
+
+1. 读 `TASKS.md` → `work/state/current-device.json` → `docs/目标-M5.md` 末节 → `CHANGELOG.md`；
+2. 跑 `scripts/fuxi-agent-preflight.sh`（可加 `--device` / `--with-tests`），**全 PASS 才开工**；
+3. 改代码前 `scripts/fuxi-agent-lock.sh acquire <名字> "<任务>"`，结束 `release`；
+4. 交接用 `/handoff`（10 节证据化格式），完成后更新 `TASKS.md` 与 state json。
+
+`CLAUDE.md` 自动导入 `AGENTS.md`，Claude Code 新会话会直接读到；其他 agent 读 `AGENTS.md` 即可。
