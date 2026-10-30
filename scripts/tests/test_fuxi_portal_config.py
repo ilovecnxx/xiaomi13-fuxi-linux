@@ -7,11 +7,11 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
 CANONICAL = ROOT / "work/rootfs-overlay/etc/xdg/xdg-desktop-portal/phosh-portals.conf"
+# 只校验源脚本；发布树（work/gh-publish、旧 fuxi-publish*）由 scripts/publish-progress.sh 生成，
+# 不应作为独立副本参与测试（2026-10-31 删除旧发布暂存目录后同步修正）。
 DEPLOYMENT_SCRIPTS = (
     ROOT / "scripts/fuxi-basic-desktop.sh",
     ROOT / "scripts/fuxi-portal-gtk.sh",
-    ROOT / "work/fuxi-publish-v2/scripts/fuxi-basic-desktop.sh",
-    ROOT / "work/fuxi-publish-v2/scripts/fuxi-portal-gtk.sh",
 )
 
 
