@@ -11,7 +11,7 @@
 # 用法: bash scripts/publish-progress.sh "提交说明"
 set -e
 B="/home/user/文档/deepseek-harness/default-workspace/linux-android"
-REPO="${FUXI_GH_REPO:-ilovecnxx/fuxi-linux-build}"
+REPO="${FUXI_GH_REPO:-ilovecnxx/xiaomi13-fuxi-linux-ubuntu26.10-kernel7.3}"
 MSG="${1:-progress update $(date +%Y-%m-%d_%H:%M)}"
 STAGE="$B/work/gh-publish"
 export GIT_TERMINAL_PROMPT=0

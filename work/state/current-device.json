@@ -1,13 +1,13 @@
 {
-  "as_of": "2026-10-30T23:10+08:00",
+  "as_of": "2026-10-31T02:38+08:00",
   "timezone": "Asia/Shanghai",
   "device": "Xiaomi 13 fuxi",
-  "state": "2026-10-30 23:03 CST：modem13 试验后刷回 s2idle2（7.3.0+ #207），boot_id 6d7ab8b3-711f-4ec7-b0af-078890540e8d，recovery_b = s2idle2 已回读校验；health-20261030-230707.log 失败 0。",
+  "state": "2026-10-31 02:38 CST：设备运行 modem16-epmap（#222，boot_id aba309f0…，uptime 25min）；fuxi-modem-keeper 已部署且 active，开机 28s 设 data-centric；5G NR home 稳定 25 分钟、零触发；本次启动 rmnet 未建立数据会话；recovery_b 当前为 modem16 实验镜像，收尾必须刷回 s2idle2（#207）。",
   "active_image": "work/kbuild/abl-fuxi-s2idle2.img",
   "image_sha256": "186e102f905dd2bbb5c3636e7f393aedb77191bbcc6b04010344d56290a4cd69",
-  "kernel": "7.3.0+ #207 s2idle2",
+  "kernel": "7.3.0+ #207 s2idle2（日用基线，当前未运行）",
   "classification": "Running Linux candidate with physically accepted native display and working GPU acceleration; not yet promoted to daily baseline (needs cold-boot/long-run regression).",
-  "boot_id": "6d7ab8b3-711f-4ec7-b0af-078890540e8d",
+  "boot_id": "aba309f0-4f6c-4961-939a-867ac98bf446",
   "fallback_image": "work/kbuild/abl-fuxi-audio-probe4.img",
   "recovery_backup": "work/backup/display-install-20261029-104150/recovery_b-before.img",
   "health_with_sensors_failures": 0,
@@ -170,14 +170,14 @@
     "Second microphone (AMIC mapping), headset path (MBHC/USB-C mux), speaker protection/calibration."
   ],
   "regression_tests_passed": 57,
-  "previous_boot_id": "1a08e704 (modem13 run2)",
-  "priority": "计划第 1 项 M5.2 已复验完成；计划第 2 项通话/基带继续采集 tms/servreg domain-list 响应，并区分 qcom_scm_pas_init_image 的 -12 来源；每次设备试验后恢复 s2idle2。源码复核：PDR -6 对应无匹配域的 -ENXIO，非事务超时；现有 QRTR 服务公告错误不足以证明 modem 因果。",
+  "previous_boot_id": "4178da53 (modem16 run2)",
+  "priority": "蜂窝：① keeper 长测 ≥1h + 无 keeper 对照；② 确认 rmnet 数据会话建立条件（本次启动未建）；③ 注册稳定性根因指向无 IMS/VoLTE（EMM cause 7），IMS 是最终解。收尾：刷回 s2idle2 #207 并跑 fuxi-health.sh。",
   "modem": {
     "pd_mapper_userspace_package": "protection-domain-mapper 1.0-4ubuntu6 installed/enabled during modem8 #214; IPA SMEM assertion still reproduced",
     "kernel_pdr_option": "Corrected 2026-10-30 17:39: current source defines CONFIG_QCOM_PD_MAPPER (drivers/soc/qcom/Kconfig:79, Makefile:10, qcom_pd_mapper.c). #207 and modem8 configs both have =y; phone sysfs shows qcom_pd_mapper.qcom-pdm-mapper bound to qcom_common.pd-mapper.0. Userspace protection-domain-mapper is also active; qrtr-lookup shows service 64 on node 1 ports 16387 and 16388. Do not disable either mapper without evidence.",
     "servreg_lookup_result": "Reported -6 maps to -ENXIO. Current pdr_locate_service returns -ENXIO after a successful domain-list response with no matching service_path; qmi_txn_wait no-response timeout returns -ETIMEDOUT (-110). The reported raw #214 PDR line is not present in the retained logs, so capture the original journal or response list next.",
     "qrtr_announcement": "failed to announce new service originates in QRTR-NS HELLO server-list announcement and also appears in no-modem s2idle1 resume log; not sufficient evidence of modem root cause.",
-    "next_diagnostic": "Flash modem9-pdrpasdiag via existing test script, capture PDR domain-list lines and 'PAS init image' errors, then restore s2idle2 (#207) and run fuxi-health.sh --require-wifi --require-sensors.",
+    "next_diagnostic": "keeper 长测采集（scripts/fuxi-modem-keeper-collect.sh）+ 无 keeper 对照；随后评估 VoLTE/IMS 路线",
     "servreg_lookup_on_207": "Read-only 17:39: #207 (s2idle2.dtb has remoteproc@4080000 disabled; only remoteproc0=adsp) still logs 'PDR: service lookup for tms/servreg failed: -6' at 10.66 s, followed by audio_pd/charger_pd indications. So this -6 line occurs without the modem and is not modem evidence by itself (pmic_glink queries tms/servreg for msm/adsp/charger_pd). Phone jsn files cover adsp root/sensor/audio only, no charger_pd.",
     "diagnostic_image": {
       "name": "modem9-pdrpasdiag",
@@ -188,7 +188,8 @@
       "dtb_identical_to": "abl-fuxi-modem8.dtb",
       "status": "built and verified on host; not flashed",
       "verify_log": "work/claude-logs/modem9-pdrpasdiag-verify-20261030.log"
-    }
+    },
+    "disclaimer": "2026-10-31 02:38 更新：以下 10-30 的诊断记录为历史背景，当前实验已推进到 modem16+keeper"
   },
   "basic_desktop": {
     "timezone": "Asia/Shanghai",
@@ -296,7 +297,7 @@
       "ui_acceptance": "not tested"
     }
   },
-  "updated_at": "2026-10-30T23:10+08:00",
+  "updated_at": "2026-10-31T02:38+08:00",
   "secondary_fallback_image": "work/kbuild/abl-fuxi-daily-pm1.img",
   "validation_scope": "s2idle2 #207: WiFi+sensor health check, 5 GHz association, CN regulatory domain, Bluetooth powered, Phosh restart count, and 57 host regression tests verified 2026-10-30; cold-boot and long-run regression remain pending.",
   "health_with_sensors_current_image_verified": true,
@@ -336,14 +337,14 @@
     "rollback_sha256": "d16eaab0ee4e5d4aaf0c06f65d000752e624cac2cee1def8103e525ae1efff16"
   },
   "device_access_latest_check": {
-    "checked_at": "2026-10-29T15:35:00+08:00",
-    "method": "USB ADB read-only",
-    "device_state": "Android 16; kernel 5.15.211-g9d5787a9b37e; slot _b; boot completed",
-    "display_enumeration": "1080x2400; Android reports 60/90/120 Hz modes",
-    "linux_ssh": "not available because the device is running Android and host USB Ethernet interface is down",
+    "checked_at": "2026-10-31T02:38+08:00",
+    "method": "USB SSH 只读",
+    "device_state": "#222 运行中，uptime 25min",
+    "usb_ssh": "10.42.0.2 可达",
+    "wifi_ssh": "wlp1s0 已连接 10.10.10.43",
     "device_mutations_during_check": false
   },
-  "last_linux_candidate_image": "work/kbuild/abl-fuxi-screen-audio9-host-bindingfix.img",
+  "last_linux_candidate_image": "work/kbuild/abl-fuxi-s2idle2.img",
   "latest_host_observation": {
     "checked_at": "2026-10-29T15:35:00+08:00",
     "adb_transport": "USB ADB online",
@@ -362,7 +363,7 @@
     },
     "operations": "read-only; no reboot, flash, settings change, or network credential access"
   },
-  "last_linux_kernel": "7.3.0+ #207",
+  "last_linux_kernel": "7.3.0+ #222 modem16-epmap（当前设备实验镜像）",
   "gpu": {
     "initialized": true,
     "renderer": "FD740 (Mesa 26.2.4 freedreno, GL 4.6)",
@@ -495,13 +496,39 @@
     "as_of": "2026-10-30T01:48:00+08:00"
   },
   "handoff": "docs/交接-新会话-20261030-0220.md",
-  "last_health_log": "work/claude-logs/health-20261030-230707.log",
+  "last_health_log": "work/claude-logs/health-20261031-020401.log（#207，02:04）",
   "modem_notes": {
     "modem10_dma32": "#216: ZONE_DMA/DMA32 fixes recovery PAS -12 (3 recoveries ok); IPA SMEM 45056 assert unchanged; restored #207"
   },
-  "recovery_b_image": "work/kbuild/abl-fuxi-s2idle2.img",
-  "recovery_b_sha256": "186e102f905dd2bbb5c3636e7f393aedb77191bbcc6b04010344d56290a4cd69",
+  "recovery_b_image": "work/kbuild/abl-fuxi-modem16-epmap.img",
+  "recovery_b_sha256": "20ac77941ddbad7d283c3681e16a31eadef71cb1486f6ffb7f0276cf03fe76ef",
   "last_health_failures": 0,
-  "updated": "2026-10-30T23:10+08:00",
-  "last_modem_trial": "modem13-smemmap #219：SMEM 整段 1:1 映射进 IPA IOMMU，两轮共约 2580 s SMMU fault 0；第一轮 1312 s 0 崩溃、注册 CHN-UNICOM 5G NR 但不稳定；第二轮 593 s 基带 rf_nr5g_low_1 崩溃后恢复失败循环（GSI CHID 0 EPID 12 errval 7 + -110）；rmnet 下行无数据；23:03 已刷回 #207，健康检查失败 0。下一步 modem14-ssrhalt（崩溃时 HALT modem GSI 通道）"
+  "updated": "2026-10-31T02:38+08:00",
+  "last_modem_trial": "modem16-epmap #222：ipa_data-v5.5.c 端点 AP_MODEM_RX 23→24、MODEM_AP_RX 21→22；rmnet 下行打通（run1/run2：ping v4/v6、HTTPS、~85Mbit/s）；两轮各约 1263/1279s 无 SMMU/FATAL/崩溃；注册仍不稳（run1 68 采样 connected 22；run2 214s EMM cause 7、318s 掉线），只有 SetPowerState low→on 能恢复。2026-10-31 02:09 起部署 keeper 做长测，见 modem_keeper。",
+  "recovery_b_note": "2026-10-31 02:09 刷入 modem16 实验镜像；测试结束后必须恢复 s2idle2（sha 186e102f…cd69）",
+  "baseline_daily_image": "work/kbuild/abl-fuxi-s2idle2.img",
+  "baseline_daily_sha256": "186e102f905dd2bbb5c3636e7f393aedb77191bbcc6b04010344d56290a4cd69",
+  "device_current": {
+    "as_of": "2026-10-31T02:38+08:00",
+    "kernel": "#222 modem16-epmap",
+    "boot_id": "aba309f0-4f6c-4961-939a-867ac98bf446",
+    "image": "work/kbuild/abl-fuxi-modem16-epmap.img",
+    "image_sha256": "20ac77941ddbad7d283c3681e16a31eadef71cb1486f6ffb7f0276cf03fe76ef",
+    "image_flashed_to_recovery_b": "2026-10-31 02:09",
+    "modemman": "补丁版 /usr/local/lib/fuxi-mm/src/ModemManager（02:09 启动）",
+    "network": "registered/home/5G NR/CHN-UNICOM/packet attached；连续 25min 采样全 home",
+    "data_session": "rmnet_ipa0 DOWN，本次启动未建立数据会话（ping 走 WiFi wlp1s0）",
+    "keeper": "fuxi-modem-keeper enabled+active，自 02:09:00 起，零触发",
+    "collect_evidence": "work/claude-logs/modem16-keeper-run1-20261031/summary.txt"
+  },
+  "modem_keeper": {
+    "source": "scripts/fuxi-modem-keeper.py（部署副本 work/deploy/modem-keeper-20261031/）",
+    "installed": "/usr/local/sbin/fuxi-modem-keeper.py, /usr/local/sbin/fuxi-qmi-usage.py, /etc/systemd/system/fuxi-modem-keeper.service",
+    "service": "enabled, active",
+    "thresholds": "reject_grace=30s, stall_limit=300s, min_gap=120s, max_gap=1800s",
+    "boot_action": "开机 28s 对 modem0 设 data-centric（usage_preference=1）",
+    "action": "被拒/掉线后 Enable(false)→SetPowerState(low)→on→Enable(true)，再重设 data-centric",
+    "run1": "2026-10-31 02:09–02:38+，uptime 25min，零网络拒绝、零 radio cycle",
+    "still_needed": "≥1h 长测 + 无 keeper 对照；本次启动 rmnet 未建会话，数据通路需另测"
+  }
 }

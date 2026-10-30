@@ -91,4 +91,4 @@ scripts/fuxi-ssh.sh 'su fuxi -c "env XDG_RUNTIME_DIR=/run/user/1000 WAYLAND_DISP
 
 - 现有实现：`work/mihomo-gui/app/clash_fuxi.py`
 - 背景与历史：`docs/Clash客户端-20261030.md`
-- 上一版验收清单：`docs/交接-给CODEX-Clash客户端-20261030.md`
+- 上一版验收清单：`docs/archive/交接-给CODEX-Clash客户端-20261030.md`

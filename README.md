@@ -4,17 +4,20 @@
 当前已能从 `recovery_b` 启动主线内核 `7.3.0+` 和 `linux` 分区上的 Ubuntu 26.10；
 普通重启回 Android。最终路线不使用 Android vendor kernel、Halium 或 Android HAL。
 
-**进度入口（2026-10-30）：`docs/进展-20261029.md`；新会话先读 `docs/交接-新会话-20261030-0220.md`。**
+**进度入口（2026-10-31）：新会话先读 `TASKS.md`（当前状态/下一步）→ `docs/目标-M5.md` 末节（最新实机结果）。**
+**2026-10-31 02:40 更新：** 设备正运行 **modem16-epmap（#222，实验镜像）**，`recovery_b` 也是它；
+modem keeper 已部署并 active，5G NR 注册 25 min 稳定、零触发；数据通路在该镜像 run1/run2 已打通（~85 Mbit/s），
+但本次启动 rmnet 未建会话。**日用基线仍是 `s2idle2 #207`，测试结束必须刷回并跑健康检查。**
 按用户要求，当前优先完善基本功能，高级驱动接入暂缓。已修复 HTTPS 根证书缺失、浏览器启动退出和竖屏键盘按键过小，
 用户确认放大后可以准确输入，中文输入和文本保存也已确认；本轮记录见 `docs/基本功能修复-20261029.md`。
-**2026-10-29 20:00 更新：** 当前运行 `screen-audio9-host-bindingfix`（`#187`）。原生 MSM DSI 显示已获用户现场确认画面正常、触控准确；
+**2026-10-29 20:00 更新：** 当时运行 `screen-audio9-host-bindingfix`（`#187`，现已不是当前镜像）。原生 MSM DSI 显示已获用户现场确认画面正常、触控准确；
 Adreno 740 改用 `/odm/firmware` 的小米签名 ZAP 后初始化成功（原先取自 `/vendor/firmware` 的是高通测试签名，TZ 返回 `-22`），
-Phosh 已切到 GPU（FD740）渲染，用户确认明显流畅。随后 `screen120-gputherm`（`#189`）以 120 Hz 运行并接入 GPU 温控，用户确认更顺滑、画面正常，随后 `screen120-regcn`（`#190`）补上 WiFi 管制域支持，`screen120-blfix`（`#191`）修复熄屏时亮度写入报错，`idle2-nohz`（`#193`）开启 CPU 深度空闲与无节拍内核（熄屏电池电流约减半），`mic1`（`#194`）再加入 WCD9385 主麦克风，`ru5sync`（`#199`）去掉全部 `*_ignore_unused` 并修复卡住的 sync_state（熄屏电池电流 117→28.5 mA），`wifi5g`（`#200`）修复 CN 管制域下 5 GHz 不可见，`battsign5`（`#205`）修正电池电流符号并静默固件 0x50 消息，`s2idle1`（`#206`）开启 s2idle 挂起（SoC 首次进入深度睡眠），`s2idle2`（`#207`）修复挂起恢复后 WiFi 管制域回到 US，当前 recovery_b 即该镜像；空闲自动挂起已用 gschema override 关闭（s2idle 中 WiFi 不能唤醒）。详见 `docs/GPU初始化故障定位-20261029.md` 与 `docs/显示驱动故障定位-20261029.md` 末节。
+Phosh 已切到 GPU（FD740）渲染，用户确认明显流畅。随后 `screen120-gputherm`（`#189`）以 120 Hz 运行并接入 GPU 温控，用户确认更顺滑、画面正常，随后 `screen120-regcn`（`#190`）补上 WiFi 管制域支持，`screen120-blfix`（`#191`）修复熄屏时亮度写入报错，`idle2-nohz`（`#193`）开启 CPU 深度空闲与无节拍内核（熄屏电池电流约减半），`mic1`（`#194`）再加入 WCD9385 主麦克风，`ru5sync`（`#199`）去掉全部 `*_ignore_unused` 并修复卡住的 sync_state（熄屏电池电流 117→28.5 mA），`wifi5g`（`#200`）修复 CN 管制域下 5 GHz 不可见，`battsign5`（`#205`）修正电池电流符号并静默固件 0x50 消息，`s2idle1`（`#206`）开启 s2idle 挂起（SoC 首次进入深度睡眠），`s2idle2`（`#207`）修复挂起恢复后 WiFi 管制域回到 US，10-29 当时 recovery_b 即该镜像（2026-10-31 已改为实验镜像，见顶部更新）；空闲自动挂起已用 gschema override 关闭（s2idle 中 WiFi 不能唤醒）。详见 `docs/GPU初始化故障定位-20261029.md` 与 `docs/显示驱动故障定位-20261029.md` 末节。
 `audio-probe4`（`#172`）和原 `recovery_b` 备份仍可回退。
 原有音频配置保留；此前 `audio-probe4`（`#172`）两颗功放独立测试可听，用户已确认桌面四声短音均可听见；
 保护/标定仍未完成，详见 `docs/音频出声修复-20261029.md`。`daily-pm1` 保留作回退，状态见 `work/state/current-device.json`。
-早期 `docs/交接-给CODEX.md`、`docs/交接-给CLAUDE.md` 记录的是历史启动实验，
-不能以其中“尚未启动主线”的旧结论判断当前状态。
+早期 `docs/archive/交接-给CODEX.md`、`docs/archive/交接-给CLAUDE.md` 记录的是历史启动实验，
+不能以其中“尚未启动主线”的旧结论判断当前状态（其余历史交接见 `docs/archive/`）。
 **2026-10-30 14:36 更新：** 计划第 1 项 M5.2 复验通过：设备仍运行 `s2idle2`（#207），自动连接 5 GHz（5180 MHz）、管制域 CN、蓝牙 Powered、Phosh NRestarts=0；
 本轮整机只读健康检查 0 失败，57 项主机回归通过；WiFi/蓝牙五个固件在设备、主机和隔离重生成结果间逐字节一致。日志见 `work/claude-logs/health-20261030-143144.log`、`work/claude-logs/host-regression-20261030-1440.log` 和 `work/claude-logs/m52-firmware-hash-20261030-1430.log`。
 **15:06 实时状态复核：** 设备仍为同一 boot_id 的 #207，systemd `running`、5 GHz/CN、蓝牙 Powered、Phosh NRestarts=0；快照 `work/claude-logs/final-status-20261030-1506.log`。
@@ -41,10 +44,11 @@ Phosh 已切到 GPU（FD740）渲染，用户确认明显流畅。随后 `screen
 | CPU 调频、温控 | daily-pm1 已实机运行：3 个 schedutil 策略、43 个热区、3 个 CPU cooling 设备 |
 | 传感器 | 加速度、光线、距离、磁场、指南针已有实测数据；SensorProxy 已接入，物理旋转方向与桌面联动待验收 |
 | 音频 | 两颗 CS35L41 可听（用户确认）；主麦克风经扬声器回环测试通过（#194）；第二麦克风（AMIC5→ADC4→SWR_MIC1，PipeWire profile 3）回环通过，待用户实录确认；耳机、保护标定待做 |
-| 相机、蜂窝 | 已有实验实现或诊断材料，不能视为可用手机功能 |
+| 蜂窝 | **数据通路已打通**（modem16 #222，run1/run2：ping v4/v6、HTTPS、~85 Mbit/s）；注册稳定性未解决；IMS/VoLTE、短信、通话、双卡未开始 |
+| 相机 | 仅有调研与诊断材料，不可用 |
 
 WiFi 当前使用上游固件和参考板标定，小米标定的兼容性仍待解决。
-当前镜像已启用 CPU 深度空闲、NO_HZ_IDLE，并关闭无主时钟/电源、强制 sync_state；M5.2（WiFi/蓝牙）已于 10-30 02:15 完成重启复验；s2idle 挂起可用（rtcwake 与电源键唤醒，挂起中 CXSD/AOSD 计数增长），但空闲自动挂起关闭、WiFi 唤醒未做，续航目标未完成。
+日常基线镜像（`s2idle2 #207`）已启用 CPU 深度空闲、NO_HZ_IDLE，并关闭无主时钟/电源、强制 sync_state；M5.2（WiFi/蓝牙）已于 10-30 02:15 完成重启复验；s2idle 挂起可用（rtcwake 与电源键唤醒，挂起中 CXSD/AOSD 计数增长），但空闲自动挂起关闭、WiFi 唤醒未做，续航目标未完成。
 
 ## 构建
 
