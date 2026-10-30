@@ -115,3 +115,26 @@ python3 -m unittest discover -s scripts/tests -v
 - `build/linux/`：含本机未提交改动的内核源码；不要重置或用旧脚本覆盖。
 - `work/rootfs-overlay/`：用户空间服务与配置；`work/claude-logs/`：构建和实机日志。
 
+
+## 版本管理与自动发布
+
+本地仓库（`main`）跟踪源码/文档/脚本/补丁/状态；大件产物、设备备份、私钥、第三方源码一律忽略：
+
+- `.gitignore` 对 `work/` 采用白名单：只跟踪 `patches/ state/ deploy/ rootfs-overlay/ device-info/ chromium-mobile/`
+- 永不入库：`*.img`、`*.ext4`、`backups/`、`work/backup/`、`work/ssh/`（含设备私钥）、`work/efs-copy/`（基带标定）、`build/`、`research/src-mm/`
+- 提交约定：自动提交信息为 `auto: <时间> (N files)`；里程碑请用常规提交信息，并可 `git tag vX.Y`
+
+**自动同步（已安装 cron，每 10 分钟）**
+
+```bash
+scripts/git-autosync.sh              # 本地提交 + 发布 GitHub
+scripts/git-autosync.sh --no-publish # 只本地提交
+scripts/git-autosync.sh --dry-run    # 预演
+scripts/git-autosync.sh --status     # 最近提交 / 发布仓库 / 日志
+```
+
+- 本地仓库：`main`，只在本机（无 remote），记录全部内部资料
+- GitHub：仅发布白名单子集（docs/research/scripts，排除交接/任务/评审/宣传/内部工具/镜像），
+  由 `scripts/publish-progress.sh` 推送到 `work/gh-publish`（该目录在 `.gitignore` 内，不重复入库）
+- 日志：`work/claude-logs/git-autosync.log`
+- 暂停自动同步：`crontab -e` 删除 `git-autosync.sh` 那一行
