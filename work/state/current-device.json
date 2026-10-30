@@ -537,11 +537,13 @@
   },
   "kernel_repro": {
     "branch": "fuxi/20261031",
-    "commit": "c3890463ba031c515e577113616a813fcc199ed0",
+    "commit": "18e74dc1d",
     "base_commit": "5b0764a53235d3c77e1ed674e836e1b3fe1a4b1f",
     "full_patch": "work/patches/full-tree-20261031/full-20261031.diff",
-    "full_patch_sha256": "97fc94da6a78d1e681650897b4b34b07a91386fd4dd99f79da51d42b75f8cc81",
-    "verified": "反向 apply --check 通过（2026-10-31）"
+    "full_patch_sha256": "2bf34d56fd9273f1a3ad010b3ca609aea017cba2963106061c86688153bb5661",
+    "verified": "反向 apply --check 通过（2026-10-31，清理 ipa_mem.c.orig 后重新导出）",
+    "cleanup_commit": "18e74dc1d",
+    "full_patch_lines": 5302
   },
   "build_manifest": "docs/kbuild-镜像清单-20261031.md",
   "legacy_notes": "docs/历史遗留与清理记录-20261031.md"

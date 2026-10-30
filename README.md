@@ -149,7 +149,7 @@ scripts/git-autosync.sh --status     # 最近提交 / 发布仓库 / 日志
 ## 内核源码与可复现性
 
 - 内核源码在 `build/linux`（torvalds 主干 clone），累计移植改动已提交到本地分支 **`fuxi/20261031`**（基于 `5b0764a53`）。
-- 全量补丁：`work/patches/full-tree-20261031/full-20261031.diff`（6027 行，含 `SHA256SUMS`，反向 apply 校验通过）。
+- 全量补丁：`work/patches/full-tree-20261031/full-20261031.diff`（5302 行，含 `SHA256SUMS`，反向 apply 校验通过）；误提交的 `ipa_mem.c.orig` 已移除并备份到 `work/patches/full-tree-20261031/removed-artifacts/`。
 - `.build.json` 现在记录 `kernel_branch` / `kernel_dirty_diff_sha256` / `kernel_untracked_files` / `kernel_clean`；
   构建前确认内核树干净，否则记下 dirty-diff 指纹。
 - 镜像清单与保留策略：`docs/kbuild-镜像清单-20261031.md`；历史遗留处理：`docs/历史遗留与清理记录-20261031.md`。

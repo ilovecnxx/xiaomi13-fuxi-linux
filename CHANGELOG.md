@@ -14,8 +14,8 @@ Xiaomi 13（fuxi / SM8550）Android + 主线 Linux 双系统。
 - 遗留：注册稳定性未解决（EMM cause 7 / 无 IMS 语音），短信/通话/双卡未开始；本次启动 rmnet 未建数据会话。
 
 ### 工程 / 可复现性
-- 内核源码版本化：`build/linux` 分支 `fuxi/20261031`（commit `c3890463b`），全量补丁
-  `work/patches/full-tree-20261031/`（6027 行，反向 apply 校验通过）。
+- 内核源码版本化：`build/linux` 分支 `fuxi/20261031`（提交 `c3890463b` + 清理提交 `18e74dc1d`），全量补丁
+  `work/patches/full-tree-20261031/`（5302 行，反向 apply 校验通过）。
 - `build.json` 新增 `kernel_branch` / `kernel_dirty_diff_sha256` / `kernel_untracked_files` / `kernel_clean`。
 - 文档：`TASKS.md` 重写；README 当前状态更新；历史交接归档到 `docs/archive/`；
   新增 `docs/历史遗留与清理记录-20261031.md`、`docs/kbuild-镜像清单-20261031.md`。
