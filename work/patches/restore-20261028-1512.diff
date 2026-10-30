@@ -1,0 +1,389 @@
+diff --git a/arch/arm64/Kconfig b/arch/arm64/Kconfig
+index 292392ded..0f5cacb89 100644
+--- a/arch/arm64/Kconfig
++++ b/arch/arm64/Kconfig
+@@ -460,6 +460,14 @@ config AMPERE_ERRATUM_AC04_CPU_23
+ config ARM64_WORKAROUND_CLEAN_CACHE
+ 	bool
+ 
++config FUXI_FORCE_BUILTIN_DTB
++	bool "fuxi: force use of built-in board DTB"
++	default n
++	help
++	  Xiaomi 13 (fuxi) 的 ABL 只能处理厂商 DTB（它会叠加 dtbo 分区的 overlay）。
++	  打开后内核在 setup_arch 里忽略 ABL 传入的 DTB，改用编进内核的
++	  sm8550-xiaomi-fuxi-min.dtb（arch/arm64/kernel/fuxi_dtb.S）。
++
+ config ARM64_ERRATUM_826319
+ 	bool "Cortex-A53: 826319: System might deadlock if a write cannot complete until read data is accepted"
+ 	default y
+diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
+index 88230c4e0..a549d8882 100644
+--- a/arch/arm64/boot/dts/qcom/Makefile
++++ b/arch/arm64/boot/dts/qcom/Makefile
+@@ -437,6 +437,16 @@ dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-hdk-display-card.dtb
+ dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-hdk-rear-camera-card.dtb
+ dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-hdk.dtb
+ dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-mtp.dtb
++dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-xiaomi-fuxi-min.dtb
++dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-xiaomi-fuxi-disp.dtb
++dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-xiaomi-fuxi-modem.dtb
++dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-xiaomi-fuxi-audio.dtb
++dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-xiaomi-fuxi-audio2.dtb
++dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-xiaomi-fuxi-usbc.dtb
++dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-xiaomi-fuxi-desk.dtb
++dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-xiaomi-fuxi-full.dtb
++dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-xiaomi-fuxi-camera.dtb
++dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-xiaomi-fuxi-sleep.dtb
+ dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-qrd.dtb
+ dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-samsung-q5q.dtb
+ dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-sony-xperia-yodo-pdx234.dtb
+diff --git a/arch/arm64/kernel/Makefile b/arch/arm64/kernel/Makefile
+index fc5d1a0c3..c96c25738 100644
+--- a/arch/arm64/kernel/Makefile
++++ b/arch/arm64/kernel/Makefile
+@@ -90,3 +90,10 @@ endif
+ 
+ # for cleaning
+ subdir- += vdso vdso32
++
++# fuxi（Xiaomi 13）：内建主线板级 DTB + simpledrm 之前的早期屏幕 console
++obj-$(CONFIG_FUXI_FORCE_BUILTIN_DTB)	+= fuxi_dtb.o fuxi_early.o
++# 嵌入哪个 DTB：make FUXI_DTB=sm8550-xiaomi-fuxi-disp（默认 -min）；DTB 改了要重新嵌入
++FUXI_DTB ?= sm8550-xiaomi-fuxi-min
++AFLAGS_fuxi_dtb.o += -DFUXI_DTB_FILE='"arch/arm64/boot/dts/qcom/$(FUXI_DTB).dtb"'
++$(obj)/fuxi_dtb.o: arch/arm64/boot/dts/qcom/$(FUXI_DTB).dtb
+diff --git a/arch/arm64/kernel/setup.c b/arch/arm64/kernel/setup.c
+index a707deba6..2cd71fe09 100644
+--- a/arch/arm64/kernel/setup.c
++++ b/arch/arm64/kernel/setup.c
+@@ -289,6 +289,16 @@ void __init __no_sanitize_address setup_arch(char **cmdline_p)
+ 	early_fixmap_init();
+ 	early_ioremap_init();
+ 
++	/*
++	 * fuxi: ABL 会把 dtbo 分区的厂商 overlay 叠到 boot 镜像附带的 DTB 上，叠到主线
++	 * DTB 会卡死，所以 boot 镜像附带厂商 DTB，内核在这里改用编进来的主线 DTB。
++	 */
++#if IS_ENABLED(CONFIG_FUXI_FORCE_BUILTIN_DTB)
++	{
++		extern const unsigned char fuxi_dtb[];
++		__fdt_pointer = __pa_symbol((unsigned long)fuxi_dtb);
++	}
++#endif
+ 	setup_machine_fdt(__fdt_pointer);
+ 
+ 	/*
+diff --git a/drivers/gpu/drm/panel/Kconfig b/drivers/gpu/drm/panel/Kconfig
+index 7a520b4d6..f37de4c03 100644
+--- a/drivers/gpu/drm/panel/Kconfig
++++ b/drivers/gpu/drm/panel/Kconfig
+@@ -1437,6 +1437,17 @@ config DRM_PANEL_VISIONOX_RM692E5
+ 	  display panels, such as the one found in the Nothing Phone (1)
+ 	  smartphone.
+ 
++config DRM_PANEL_XIAOMI_FUXI
++	tristate "Xiaomi 13 (fuxi) AMOLED DSC command mode panel"
++	depends on OF
++	depends on DRM_MIPI_DSI
++	depends on BACKLIGHT_CLASS_DEVICE
++	select DRM_DISPLAY_DSC_HELPER
++	select DRM_DISPLAY_HELPER
++	help
++	  Say Y here if you want to enable support for the Samsung AMOLED
++	  command mode DSI panel with DSC used in the Xiaomi 13 (fuxi).
++
+ config DRM_PANEL_VISIONOX_VTDR6130
+ 	tristate "Visionox VTDR6130"
+ 	depends on OF
+diff --git a/drivers/gpu/drm/panel/Makefile b/drivers/gpu/drm/panel/Makefile
+index da5175909..b95049919 100644
+--- a/drivers/gpu/drm/panel/Makefile
++++ b/drivers/gpu/drm/panel/Makefile
+@@ -137,6 +137,7 @@ obj-$(CONFIG_DRM_PANEL_TRULY_NT35597_WQXGA) += panel-truly-nt35597.o
+ obj-$(CONFIG_DRM_PANEL_VISIONOX_G2647FB105) += panel-visionox-g2647fb105.o
+ obj-$(CONFIG_DRM_PANEL_VISIONOX_RM69299) += panel-visionox-rm69299.o
+ obj-$(CONFIG_DRM_PANEL_VISIONOX_RM692E5) += panel-visionox-rm692e5.o
++obj-$(CONFIG_DRM_PANEL_XIAOMI_FUXI) += panel-xiaomi-fuxi.o
+ obj-$(CONFIG_DRM_PANEL_VISIONOX_VTDR6130) += panel-visionox-vtdr6130.o
+ obj-$(CONFIG_DRM_PANEL_VISIONOX_R66451) += panel-visionox-r66451.o
+ obj-$(CONFIG_DRM_PANEL_WIDECHIPS_WS2401) += panel-widechips-ws2401.o
+diff --git a/drivers/input/touchscreen/Kconfig b/drivers/input/touchscreen/Kconfig
+index 9b9ae8ac3..bd6c3be8b 100644
+--- a/drivers/input/touchscreen/Kconfig
++++ b/drivers/input/touchscreen/Kconfig
+@@ -1240,6 +1240,17 @@ config TOUCHSCREEN_ST1232
+ 	  To compile this driver as a module, choose M here: the
+ 	  module will be called st1232_ts.
+ 
++config TOUCHSCREEN_ST_FTM5
++	tristate "STMicroelectronics FTM5 SPI touchscreen"
++	depends on SPI
++	help
++	  Say Y here to enable support for STMicroelectronics FingerTip
++	  FTM5 touchscreen controllers on SPI, as found e.g. in the
++	  Xiaomi 13.
++
++	  To compile this driver as a module, choose M here: the
++	  module will be called st-ftm5.
++
+ config TOUCHSCREEN_STMFTS
+ 	tristate "STMicroelectronics STMFTS touchscreen"
+ 	depends on I2C
+diff --git a/drivers/input/touchscreen/Makefile b/drivers/input/touchscreen/Makefile
+index bfd9de833..efa779650 100644
+--- a/drivers/input/touchscreen/Makefile
++++ b/drivers/input/touchscreen/Makefile
+@@ -81,6 +81,7 @@ obj-$(CONFIG_TOUCHSCREEN_S6SY761)	+= s6sy761.o
+ obj-$(CONFIG_TOUCHSCREEN_SILEAD)	+= silead.o
+ obj-$(CONFIG_TOUCHSCREEN_SIS_I2C)	+= sis_i2c.o
+ obj-$(CONFIG_TOUCHSCREEN_ST1232)	+= st1232.o
++obj-$(CONFIG_TOUCHSCREEN_ST_FTM5)	+= st-ftm5.o
+ obj-$(CONFIG_TOUCHSCREEN_STMFTS)	+= stmfts.o
+ obj-$(CONFIG_TOUCHSCREEN_STMPE)		+= stmpe-ts.o
+ obj-$(CONFIG_TOUCHSCREEN_SUN4I)		+= sun4i-ts.o
+diff --git a/drivers/misc/Kconfig b/drivers/misc/Kconfig
+index 7364931da..40b43635f 100644
+--- a/drivers/misc/Kconfig
++++ b/drivers/misc/Kconfig
+@@ -568,6 +568,13 @@ config MCHP_LAN966X_PCI
+ 	    - lan966x-miim (MDIO_MSCC_MIIM)
+ 	    - lan966x-switch (LAN966X_SWITCH)
+ 
++config FUXI_CAMERA_POWER
++	tristate "Xiaomi 13 (fuxi) camera module power switch (bring-up)"
++	depends on OF && REGULATOR && COMMON_CLK && GPIOLIB
++	help
++	  Sysfs power switch for camera modules on the Xiaomi 13, used to
++	  identify image sensors over CCI before sensor drivers exist.
++
+ source "drivers/misc/c2port/Kconfig"
+ source "drivers/misc/eeprom/Kconfig"
+ source "drivers/misc/cb710/Kconfig"
+diff --git a/drivers/misc/Makefile b/drivers/misc/Makefile
+index e8d8d5d88..a97100e9f 100644
+--- a/drivers/misc/Makefile
++++ b/drivers/misc/Makefile
+@@ -71,3 +71,4 @@ obj-y				+= keba/
+ obj-y				+= amd-sbi/
+ obj-$(CONFIG_MISC_RP1)		+= rp1/
+ obj-$(CONFIG_INTEL_SSEI)	+= issei/
++obj-$(CONFIG_FUXI_CAMERA_POWER)	+= fuxi-camera-power.o
+diff --git a/drivers/power/supply/qcom_battmgr.c b/drivers/power/supply/qcom_battmgr.c
+index 7716eb9e1..a4bf9efe3 100644
+--- a/drivers/power/supply/qcom_battmgr.c
++++ b/drivers/power/supply/qcom_battmgr.c
+@@ -9,6 +9,7 @@
+ #include <linux/module.h>
+ #include <linux/mutex.h>
+ #include <linux/nvmem-consumer.h>
++#include <linux/of.h>
+ #include <linux/of_device.h>
+ #include <linux/power_supply.h>
+ #include <linux/property.h>
+@@ -313,6 +314,8 @@ struct qcom_battmgr {
+ 	struct pmic_glink_client *client;
+ 
+ 	enum qcom_battmgr_variant variant;
++	/* firmware has BATT_CONSTANT_CURRENT before BATT_TEMP, see qcom_battmgr_prop_to_fw() */
++	bool shifted_props;
+ 
+ 	struct power_supply *ac_psy;
+ 	struct power_supply *bat_psy;
+@@ -452,6 +455,26 @@ static const u8 sm8350_bat_prop_map[] = {
+ 	[POWER_SUPPLY_PROP_CHARGE_CONTROL_END_THRESHOLD] = BATT_CHG_CTRL_END_THR,
+ };
+ 
++/*
++ * Xiaomi's SM8550 ADSP firmware inserts BATT_CONSTANT_CURRENT after
++ * BATT_CHG_CTRL_LIM_MAX, so every battery property from BATT_TEMP on is one
++ * higher than in the reference firmware.
++ */
++static unsigned int qcom_battmgr_prop_to_fw(struct qcom_battmgr *battmgr,
++					    unsigned int prop)
++{
++	return battmgr->shifted_props && prop >= BATT_TEMP ? prop + 1 : prop;
++}
++
++static unsigned int qcom_battmgr_prop_from_fw(struct qcom_battmgr *battmgr,
++					      unsigned int prop)
++{
++	if (!battmgr->shifted_props || prop < BATT_TEMP)
++		return prop;
++	/* BATT_TEMP's slot is the constant current property, which is not used */
++	return prop == BATT_TEMP ? UINT_MAX : prop - 1;
++}
++
+ static int qcom_battmgr_bat_sm8350_update(struct qcom_battmgr *battmgr,
+ 					  enum power_supply_property psp)
+ {
+@@ -464,7 +487,8 @@ static int qcom_battmgr_bat_sm8350_update(struct qcom_battmgr *battmgr,
+ 	prop = sm8350_bat_prop_map[psp];
+ 
+ 	mutex_lock(&battmgr->lock);
+-	ret = qcom_battmgr_request_property(battmgr, BATTMGR_BAT_PROPERTY_GET, prop, 0);
++	ret = qcom_battmgr_request_property(battmgr, BATTMGR_BAT_PROPERTY_GET,
++					    qcom_battmgr_prop_to_fw(battmgr, prop), 0);
+ 	mutex_unlock(&battmgr->lock);
+ 
+ 	return ret;
+@@ -1381,7 +1405,8 @@ static void qcom_battmgr_sm8350_callback(struct qcom_battmgr *battmgr,
+ 
+ 	switch (opcode) {
+ 	case BATTMGR_BAT_PROPERTY_GET:
+-		property = le32_to_cpu(resp->intval.property);
++		property = qcom_battmgr_prop_from_fw(battmgr,
++						     le32_to_cpu(resp->intval.property));
+ 		if (property == BATT_MODEL_NAME) {
+ 			if (payload_len != sizeof(resp->strval)) {
+ 				dev_warn(battmgr->dev,
+@@ -1658,6 +1683,12 @@ static int qcom_battmgr_probe(struct auxiliary_device *adev,
+ 	else
+ 		battmgr->variant = QCOM_BATTMGR_SM8350;
+ 
++	/* Xiaomi firmware: shifted property ids and no charge control thresholds */
++	if (of_machine_is_compatible("xiaomi,fuxi")) {
++		battmgr->shifted_props = true;
++		battmgr->variant = QCOM_BATTMGR_SM8350;
++	}
++
+ 	ret = qcom_battmgr_charge_control_thresholds_init(battmgr);
+ 	if (ret < 0)
+ 		return dev_err_probe(dev, ret,
+diff --git a/drivers/ufs/host/ufs-qcom.c b/drivers/ufs/host/ufs-qcom.c
+index 954be9343..ee0eadd5b 100644
+--- a/drivers/ufs/host/ufs-qcom.c
++++ b/drivers/ufs/host/ufs-qcom.c
+@@ -3040,9 +3040,26 @@ static const struct dev_pm_ops ufs_qcom_pm_ops = {
+ #endif
+ };
+ 
++/*
++ * ufshcd_wl_shutdown() powers the UFS device off and ufs_qcom_suspend() then
++ * leaves the device reset line asserted. The TLMM UFS_RESET setting is not
++ * restored to its power-on value by a warm reset, so the boot ROM would find
++ * the device still held in reset and fall into EDL (seen on SM8550). Release
++ * it, as the downstream driver does.
++ */
++static void ufs_qcom_shutdown(struct platform_device *pdev)
++{
++	struct ufs_hba *hba = platform_get_drvdata(pdev);
++	struct ufs_qcom_host *host = hba ? ufshcd_get_variant(hba) : NULL;
++
++	if (host && host->device_reset)
++		ufs_qcom_device_reset_ctrl(hba, false);
++}
++
+ static struct platform_driver ufs_qcom_pltform = {
+ 	.probe	= ufs_qcom_probe,
+ 	.remove = ufs_qcom_remove,
++	.shutdown = ufs_qcom_shutdown,
+ 	.driver	= {
+ 		.name	= "ufshcd-qcom",
+ 		.pm	= &ufs_qcom_pm_ops,
+diff --git a/sound/soc/qcom/sc8280xp.c b/sound/soc/qcom/sc8280xp.c
+index 4d48e1012..3a9081272 100644
+--- a/sound/soc/qcom/sc8280xp.c
++++ b/sound/soc/qcom/sc8280xp.c
+@@ -68,6 +68,8 @@ struct qcom_snd_soc_common {
+ 	int num_controls;
+ 	unsigned int codec_dai_fmt;
+ 	bool codec_sysclk_set;
++	/* Clock the codecs' PLL from BCLK (e.g. Cirrus CS35L41 on MI2S) */
++	bool codec_sysclk_bclk;
+ 	bool mi2s_mclk_enable;
+ 	bool mi2s_bclk_enable;
+ 	bool wcd_jack;
+@@ -193,6 +195,16 @@ static int sc8280xp_snd_init(struct snd_soc_pcm_runtime *rtd)
+ 		snd_soc_limit_volume(card, "SpkrLeft PA Volume", 17);
+ 		snd_soc_limit_volume(card, "SpkrRight PA Volume", 17);
+ 		break;
++	case SECONDARY_MI2S_RX:
++		/*
++		 * Xiaomi 13: CS35L41 amplifiers run without their DSP speaker
++		 * protection firmware, cap Digital Volume at 0 dB.
++		 */
++		if (data->priv->codec_sysclk_bclk) {
++			snd_soc_limit_volume(card, "B Digital PCM Volume", 816);
++			snd_soc_limit_volume(card, "T Digital PCM Volume", 816);
++		}
++		break;
+ 	case DISPLAY_PORT_RX_0:
+ 		/* DISPLAY_PORT dai ids are not contiguous */
+ 		dp_pcm_id = 0;
+@@ -253,7 +265,7 @@ static int sc8280xp_snd_hw_params(struct snd_pcm_substream *substream,
+ 	struct sc8280xp_snd_data *data = snd_soc_card_get_drvdata(rtd->card);
+ 	int mclk_freq = sc8280xp_get_mclk_freq(params);
+ 	int bclk_freq = sc8280xp_get_bclk_freq(params);
+-	int ret;
++	int i, ret;
+ 
+ 	switch (cpu_dai->id) {
+ 	case PRIMARY_MI2S_RX ... QUATERNARY_MI2S_TX:
+@@ -265,10 +277,13 @@ static int sc8280xp_snd_hw_params(struct snd_pcm_substream *substream,
+ 			return ret;
+ 
+ 		if (data->priv->codec_dai_fmt) {
+-			ret = snd_soc_dai_set_fmt(codec_dai,
+-						  data->priv->codec_dai_fmt);
+-			if (ret && ret != -ENOTSUPP)
+-				return ret;
++			for_each_rtd_codec_dais(rtd, i, codec_dai) {
++				ret = snd_soc_dai_set_fmt(codec_dai,
++							  data->priv->codec_dai_fmt);
++				if (ret && ret != -ENOTSUPP)
++					return ret;
++			}
++			codec_dai = snd_soc_rtd_to_codec(rtd, 0);
+ 		}
+ 
+ 		if (data->priv->mi2s_mclk_enable) {
+@@ -294,6 +309,21 @@ static int sc8280xp_snd_hw_params(struct snd_pcm_substream *substream,
+ 			if (ret && ret != -ENOTSUPP)
+ 				return ret;
+ 		}
++
++		if (data->priv->codec_sysclk_bclk) {
++			for_each_rtd_codec_dais(rtd, i, codec_dai) {
++				ret = snd_soc_dai_set_sysclk(codec_dai, 0, bclk_freq,
++							     SND_SOC_CLOCK_IN);
++				if (ret && ret != -ENOTSUPP)
++					return ret;
++
++				ret = snd_soc_component_set_sysclk(codec_dai->component,
++								   0, 0, bclk_freq,
++								   SND_SOC_CLOCK_IN);
++				if (ret && ret != -ENOTSUPP)
++					return ret;
++			}
++		}
+ 		break;
+ 	case PRIMARY_TDM_RX_0 ... QUINARY_TDM_TX_7:
+ 		return sc8280xp_tdm_hw_params(substream, params);
+@@ -538,6 +568,18 @@ static const struct qcom_snd_soc_common sm8550_priv_data = {
+ 			 SND_SOC_DAIFMT_I2S,
+ };
+ 
++static const struct qcom_snd_soc_common xiaomi_fuxi_priv_data = {
++	.driver_name = "sm8550",
++	.dapm_widgets = sc8280xp_dapm_widgets,
++	.num_dapm_widgets = ARRAY_SIZE(sc8280xp_dapm_widgets),
++	.wcd_jack = true,
++	.codec_sysclk_bclk = true,
++	.mi2s_bclk_enable = true,
++	.codec_dai_fmt = SND_SOC_DAIFMT_BC_FC |
++			 SND_SOC_DAIFMT_NB_NF |
++			 SND_SOC_DAIFMT_I2S,
++};
++
+ static const struct qcom_snd_soc_common sm8650_priv_data = {
+ 	.driver_name = "sm8650",
+ 	.dapm_widgets = sc8280xp_dapm_widgets,
+@@ -576,6 +618,7 @@ static const struct of_device_id snd_sc8280xp_dt_match[] = {
+ 	{ .compatible = "qcom,sm8550-sndcard", .data = &sm8550_priv_data },
+ 	{ .compatible = "qcom,sm8650-sndcard", .data = &sm8650_priv_data },
+ 	{ .compatible = "qcom,sm8750-sndcard", .data = &sm8750_priv_data },
++	{ .compatible = "xiaomi,fuxi-sndcard", .data = &xiaomi_fuxi_priv_data },
+ 	{}
+ };
+ 

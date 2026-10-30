@@ -1,0 +1,22 @@
+--- /home/user/文档/deepseek-harness/default-workspace/linux-android/work/patches/mm-primary-slot-20261030/mm-shared-qmi.c.orig	2025-11-25 13:58:16.000000000 +0800
++++ src/mm-shared-qmi.c	2026-10-30 19:17:53.208365623 +0800
+@@ -3385,12 +3385,16 @@
+         g_autoptr(GError)               inner_error = NULL;
+         gboolean                        sim_active = FALSE;
+ 
+-        /* Store active slot info */
++        /* Store active slot info. With dual SIM dual active modems more than
++         * one physical slot may be active; prefer the one mapped to logical
++         * slot 1 (the primary provisioning session), else the first active. */
+         slot_status = &g_array_index (physical_slots, QmiPhysicalSlotStatusSlot, i);
+         if (slot_status->physical_slot_status == QMI_UIM_SLOT_STATE_ACTIVE) {
+             sim_active = TRUE;
+-            ctx->active_logical_id = slot_status->logical_slot;
+-            ctx->active_slot_number = i + 1;
++            if (!ctx->active_slot_number || slot_status->logical_slot == 1) {
++                ctx->active_logical_id = slot_status->logical_slot;
++                ctx->active_slot_number = i + 1;
++            }
+         }
+ 
+         if (!slot_status->iccid->len) {

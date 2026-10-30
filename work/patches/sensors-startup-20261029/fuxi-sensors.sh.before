@@ -1,0 +1,51 @@
+#!/bin/bash
+# 传感器第一步：让 ADSP 上的传感器子系统（SSC，sensorspd）能读到它的配置文件。
+# 主线做法：hexagonrpcd 通过 FastRPC（/dev/fastrpc-adsp，内核 CONFIG_QCOM_FASTRPC）给 DSP 提供文件，
+# 文件取自 Android（只读复制），Ubuntu 包 hexagonrpcd 的默认根目录是 /var/lib/droid-juicer/sensors/：
+#   acdb/                ← /vendor/etc/acdbdata（音频校准数据，以后音频也可能用到）
+#   dsp/                 ← /vendor/dsp（DSP 侧动态库）
+#   sensors/config/      ← /vendor/etc/sensors/config
+#   sensors/registry/    ← /mnt/vendor/persist/sensors/registry/registry（本机传感器标定，persist 分区只读复制）
+#   sensors/sns_reg.conf ← /vendor/etc/sensors/sns_reg_config
+#   socinfo/             ← 由 hexagonrpcd 直接读 /sys/devices/soc0
+# libssc 在 Ubuntu 里有包（libssc2 0.4.4、libssc-bin 带 ssccli 测试工具）；但 Ubuntu 的 iio-sensor-proxy 没链接 libssc，
+# 桌面集成（自动旋转、距离、光线）还要重编带 SSC 支持的 iio-sensor-proxy（后续）。
+# 用法: scripts/fuxi-sensors.sh [镜像，默认 work/kbuild/abl-fuxi-daily-pm1.img]（手机须先在 Android）
+set -u
+B="$(cd "$(dirname "$0")/.." && pwd)"
+ADB="$B/tools/platform-tools/adb"
+IMG="${1:-$B/work/kbuild/abl-fuxi-daily-pm1.img}"
+LOG="$B/work/claude-logs/sensors-$(date +%Y%m%d-%H%M%S).log"
+S="$B/work/firmware-sensors"
+exec > >(tee -a "$LOG") 2>&1
+say() { echo "$(date +%T) $*"; }
+. "$B/scripts/fuxi-lib.sh"
+ssh_() { timeout "${T:-120}" "$B/scripts/fuxi-ssh.sh" "$@"; }
+
+say "== 1. 从 Android 只读拉取"
+fuxi_ensure_android || exit 1
+mkdir -p "$S/sensors"
+pull() { timeout 600 "$ADB" pull "$1" "$2" >/dev/null 2>&1 && say "pulled $1" || say "WARN 没拉到 $1"; }
+[ -d "$S/acdb" ] || pull /vendor/etc/acdbdata "$S/acdb"
+[ -d "$S/dsp" ] || pull /vendor/dsp "$S/dsp"
+[ -d "$S/sensors/config" ] || pull /vendor/etc/sensors/config "$S/sensors/config"
+[ -d "$S/sensors/registry" ] || pull /mnt/vendor/persist/sensors/registry/registry "$S/sensors/registry"
+[ -f "$S/sensors/sns_reg.conf" ] || pull /vendor/etc/sensors/sns_reg_config "$S/sensors/sns_reg.conf"
+say "大小 $(du -sh "$S" | cut -f1)；传感器配置 $(ls "$S/sensors/config" 2>/dev/null | wc -l) 个"
+
+say "== 2. 进 Ubuntu"
+FUXI_KEEP=1 "$B/scripts/fuxi-test-recovery.sh" "$IMG" 'uname -v' | grep -vE 'pushed' || { say "FAIL 没进 Ubuntu"; exit 1; }
+
+say "== 3. 部署 + hexagonrpcd"
+tar -C "$S" -cf - . | T=600 ssh_ 'mkdir -p /var/lib/droid-juicer/sensors && tar --no-same-owner -C /var/lib/droid-juicer/sensors -xmf - && echo files-ok'
+T=600 ssh_ 'DEBIAN_FRONTEND=noninteractive apt-get install -y hexagonrpcd 2>&1 | tail -n 2
+grep -q droid-juicer /root/fuxi-mainline-backup/CHANGES.txt || echo "fuxi-mainline（传感器）: /var/lib/droid-juicer/sensors（Android acdb/dsp/sensors 只读拷贝）；apt: hexagonrpcd" >> /root/fuxi-mainline-backup/CHANGES.txt
+ls -l /dev/fastrpc-* 2>&1
+systemctl enable hexagonrpcd 2>&1 | tail -n 1; systemctl restart hexagonrpcd; sleep 10
+systemctl --no-pager -l status hexagonrpcd | tail -n 15
+echo "--- dmesg"; dmesg | grep -iE "fastrpc|sensor|ssc|slpi" | tail -n 20'
+say "== 4. 读传感器（libssc 自带的 ssccli；请拿起手机转一转、用手遮一下屏幕顶部）"
+notify-send fuxi "传感器测试：转动手机、遮挡听筒附近 20 秒" 2>/dev/null || true
+T=200 ssh_ 'DEBIAN_FRONTEND=noninteractive apt-get install -y libssc-bin 2>&1 | tail -n 1
+for s in accelerometer proximity light gyroscope magnetometer; do echo "--- $s"; timeout 8 ssccli --sensor $s 2>&1 | head -n 6; done'
+say "完成，日志 $LOG"

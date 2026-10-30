@@ -1,0 +1,17 @@
+--- a/drivers/net/ipa/ipa_mem.c
++++ b/drivers/net/ipa/ipa_mem.c
+@@ -537,6 +537,14 @@ static int ipa_smem_init(struct ipa *ipa, size_t size)
+ 	void *virt;
+ 	int ret;
+ 
++	/* fuxi diag (modem11): leave SMEM item 497 for the modem to allocate,
++	 * to test whether the AP pre-allocation conflicts with the modem's own
++	 * ipa_ipfltri_sys_mem_init.  Without smem_size the INIT_MODEM_DRIVER
++	 * request omits smem_info / per_stats_smem_info.
++	 */
++	dev_info(ipa->dev, "fuxi: skipping SMEM item %u pre-allocation\n",
++		 SMEM_IPA_FILTER_TABLE);
++	return 0;
+ 	if (!size)
+ 		return 0;	/* SMEM memory not used */
+ 

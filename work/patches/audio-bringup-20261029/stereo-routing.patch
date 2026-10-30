@@ -1,0 +1,84 @@
+--- a/arch/arm64/boot/dts/qcom/sm8550-xiaomi-fuxi-audio.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm8550-xiaomi-fuxi-audio.dtsi
+@@ -40,7 +40,7 @@
+ 			link-name = "Secondary MI2S Playback";
+ 
+ 			codec {
+-				sound-dai = <&spk_amp_t>, <&spk_amp_b>;
++				sound-dai = <&spk_amp_t 0>, <&spk_amp_b 0>;
+ 			};
+ 
+ 			cpu {
+@@ -78,13 +78,12 @@
+ 		sound-name-prefix = "B";
+ 		/* DSP 固件名 cirrus/cs35l41-dsp1-spk-prot-xiaomi-fuxi-B.{wmfw,bin}（打开 "B DSP1 Preload Switch" 才加载） */
+ 		cirrus,subsystem-id = "xiaomi-fuxi";
+-		#sound-dai-cells = <0>;
++		#sound-dai-cells = <1>;
+ 
+ 		cirrus,boost-peak-milliamp = <4000>;
+ 		cirrus,boost-ind-nanohenry = <1000>;
+ 		cirrus,boost-cap-microfarad = <15>;
+ 		cirrus,asp-sdout-hiz = <3>;
+-		cirrus,right-channel-amp;
+ 		cirrus,gpio2-src-select = <4>;
+ 		cirrus,gpio2-output-enable;
+ 	};
+@@ -98,7 +97,7 @@
+ 		pinctrl-names = "default";
+ 		sound-name-prefix = "T";
+ 		cirrus,subsystem-id = "xiaomi-fuxi";
+-		#sound-dai-cells = <0>;
++		#sound-dai-cells = <1>;
+ 
+ 		cirrus,boost-peak-milliamp = <4000>;
+ 		cirrus,boost-ind-nanohenry = <1000>;
+--- a/sound/soc/qcom/sc8280xp.c
++++ b/sound/soc/qcom/sc8280xp.c
+@@ -70,6 +70,7 @@
+ 	bool codec_sysclk_set;
+ 	/* Clock the codecs' PLL from BCLK (e.g. Cirrus CS35L41 on MI2S) */
+ 	bool codec_sysclk_bclk;
++	bool mi2s_codec_channel_map;
+ 	bool mi2s_mclk_enable;
+ 	bool mi2s_bclk_enable;
+ 	bool wcd_jack;
+@@ -281,6 +282,19 @@
+ 				ret = snd_soc_dai_set_fmt(codec_dai,
+ 							  data->priv->codec_dai_fmt);
+ 				if (ret && ret != -ENOTSUPP)
++					return ret;
++			}
++			codec_dai = snd_soc_rtd_to_codec(rtd, 0);
++		}
++
++		if (data->priv->mi2s_codec_channel_map) {
++			/* Mono codecs in DT order: first left, second right. */
++			for_each_rtd_codec_dais(rtd, i, codec_dai) {
++				unsigned int slot = i;
++
++				ret = snd_soc_dai_set_channel_map(codec_dai, 0, NULL,
++								  1, &slot);
++				if (ret)
+ 					return ret;
+ 			}
+ 			codec_dai = snd_soc_rtd_to_codec(rtd, 0);
+@@ -574,6 +588,7 @@
+ 	.num_dapm_widgets = ARRAY_SIZE(sc8280xp_dapm_widgets),
+ 	.wcd_jack = true,
+ 	.codec_sysclk_bclk = true,
++	.mi2s_codec_channel_map = true,
+ 	.mi2s_bclk_enable = true,
+ 	.codec_dai_fmt = SND_SOC_DAIFMT_BC_FC |
+ 			 SND_SOC_DAIFMT_NB_NF |
+--- a/arch/arm64/boot/dts/qcom/sm8550-xiaomi-fuxi-audio.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm8550-xiaomi-fuxi-audio.dtsi
+@@ -115,7 +115,7 @@
+ 	#address-cells = <1>;
+ 	#size-cells = <0>;
+ 
+-	dai@18 {
++	dai@12 {
+ 		reg = <SECONDARY_MI2S_RX>;
+ 		clocks = <&q6prmcc LPASS_CLK_ID_SEC_MI2S_IBIT LPASS_CLK_ATTRIBUTE_COUPLE_NO>;
+ 		clock-names = "bclk";

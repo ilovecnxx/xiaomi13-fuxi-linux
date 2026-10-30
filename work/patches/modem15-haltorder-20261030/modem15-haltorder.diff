@@ -1,0 +1,147 @@
+--- a/drivers/net/ipa/gsi.c	2026-10-30 23:09:14.100554957 +0800
++++ b/drivers/net/ipa/gsi.c	2026-10-30 23:32:15.115644894 +0800
+@@ -89,6 +89,7 @@
+ #define GSI_EVT_RING_INT_MODT		(32 * 1) /* 1ms under 32KHz clock */
+ 
+ #define GSI_CMD_TIMEOUT			50	/* milliseconds */
++#define GSI_GENERIC_CMD_TIMEOUT		5000	/* milliseconds */
+ 
+ #define GSI_CHANNEL_STOP_RETRIES	10
+ #define GSI_CHANNEL_MODEM_HALT_RETRIES	10
+@@ -381,9 +382,9 @@
+  * completion to be signaled.  Returns true if the command completes
+  * or false if it times out.
+  */
+-static bool gsi_command(struct gsi *gsi, u32 reg, u32 val)
++static bool gsi_command_timeout(struct gsi *gsi, u32 reg, u32 val, u32 msecs)
+ {
+-	unsigned long timeout = msecs_to_jiffies(GSI_CMD_TIMEOUT);
++	unsigned long timeout = msecs_to_jiffies(msecs);
+ 	struct completion *completion = &gsi->completion;
+ 
+ 	reinit_completion(completion);
+@@ -393,6 +394,11 @@
+ 	return !!wait_for_completion_timeout(completion, timeout);
+ }
+ 
++static bool gsi_command(struct gsi *gsi, u32 reg, u32 val)
++{
++	return gsi_command_timeout(gsi, reg, val, GSI_CMD_TIMEOUT);
++}
++
+ /* Return the hardware's notion of the current state of an event ring */
+ static enum gsi_evt_ring_state
+ gsi_evt_ring_state(struct gsi *gsi, u32 evt_ring_id)
+@@ -1763,9 +1769,9 @@
+  * the ability to determine channel state for a modem channel, so we simply
+  * issue the command and wait for it to complete.
+  */
+-static int gsi_generic_command(struct gsi *gsi, u32 channel_id,
+-			       enum gsi_generic_cmd_opcode opcode,
+-			       u8 params)
++static int gsi_generic_command_timeout(struct gsi *gsi, u32 channel_id,
++				       enum gsi_generic_cmd_opcode opcode,
++				       u8 params, u32 msecs)
+ {
+ 	const struct reg *reg;
+ 	bool timeout;
+@@ -1801,7 +1807,7 @@
+ 	if (gsi->version >= IPA_VERSION_4_11)
+ 		val |= reg_encode(reg, GENERIC_PARAMS, params);
+ 
+-	timeout = !gsi_command(gsi, reg_offset(reg), val);
++	timeout = !gsi_command_timeout(gsi, reg_offset(reg), val, msecs);
+ 
+ 	/* Disable the GP_INT1 IRQ type again */
+ 	reg = gsi_reg(gsi, CNTXT_GLOB_IRQ_EN);
+@@ -1816,6 +1822,14 @@
+ 	return -ETIMEDOUT;
+ }
+ 
++static int gsi_generic_command(struct gsi *gsi, u32 channel_id,
++			       enum gsi_generic_cmd_opcode opcode,
++			       u8 params)
++{
++	return gsi_generic_command_timeout(gsi, channel_id, opcode, params,
++					   GSI_CMD_TIMEOUT);
++}
++
+ static int gsi_modem_channel_alloc(struct gsi *gsi, u32 channel_id)
+ {
+ 	return gsi_generic_command(gsi, channel_id,
+@@ -1827,10 +1841,17 @@
+ 	u32 retries = GSI_CHANNEL_MODEM_HALT_RETRIES;
+ 	int ret;
+ 
+-	do
+-		ret = gsi_generic_command(gsi, channel_id,
+-					  GSI_GENERIC_HALT_CHANNEL, 0);
+-	while (ret == -EAGAIN && retries--);
++	/* The modem may still be draining a channel when it is told to halt;
++	 * give it time to finish between attempts.
++	 */
++	while (true) {
++		ret = gsi_generic_command_timeout(gsi, channel_id,
++						  GSI_GENERIC_HALT_CHANNEL, 0,
++						  GSI_GENERIC_CMD_TIMEOUT);
++		if (ret != -EAGAIN || !retries--)
++			break;
++		usleep_range(5 * USEC_PER_MSEC, 10 * USEC_PER_MSEC);
++	}
+ 
+ 	if (ret)
+ 		dev_err(gsi->dev, "error %d halting modem channel %u\n",
+--- a/drivers/net/ipa/ipa_modem.c	2026-10-30 23:09:39.658037852 +0800
++++ b/drivers/net/ipa/ipa_modem.c	2026-10-30 23:32:45.003667575 +0800
+@@ -422,11 +422,6 @@
+ 
+ 	ipa_endpoint_modem_pause_all(ipa, true);
+ 
+-	if (of_machine_is_compatible("xiaomi,fuxi")) {
+-		ipa_endpoint_modem_halt_all(ipa);
+-		dev_info(dev, "fuxi: halted modem GSI channels\n");
+-	}
+-
+ 	ipa_endpoint_modem_hol_block_clear_all(ipa);
+ 
+ 	ipa_table_reset(ipa, true);
+@@ -454,6 +449,29 @@
+ 	(void)pm_runtime_put_autosuspend(dev);
+ }
+ 
++/* The modem allocates its own GSI channels on fuxi, and they must be
++ * halted once the modem is offline so it can allocate them again on
++ * its next boot.
++ */
++static void ipa_modem_offline(struct ipa *ipa)
++{
++	struct device *dev = ipa->dev;
++	int ret;
++
++	ret = pm_runtime_get_sync(dev);
++	if (ret < 0) {
++		dev_err(dev, "error %d getting power to halt modem channels\n",
++			ret);
++		goto out_power_put;
++	}
++
++	ipa_endpoint_modem_halt_all(ipa);
++	dev_info(dev, "fuxi: halted modem GSI channels\n");
++
++out_power_put:
++	(void)pm_runtime_put_autosuspend(dev);
++}
++
+ static int ipa_modem_notify(struct notifier_block *nb, unsigned long action,
+ 			    void *data)
+ {
+@@ -481,6 +499,9 @@
+ 
+ 	case QCOM_SSR_AFTER_SHUTDOWN:
+ 		dev_info(dev, "received modem offline event\n");
++		if (ipa->setup_complete &&
++		    of_machine_is_compatible("xiaomi,fuxi"))
++			ipa_modem_offline(ipa);
+ 		break;
+ 
+ 	default:

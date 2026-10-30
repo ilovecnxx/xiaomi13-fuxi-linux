@@ -1,0 +1,119 @@
+#!/bin/busybox sh
+/bin/busybox --install -s /bin
+mkdir -p /proc /sys /dev /tmp
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+mkdir -p /dev/pts
+mount -t devpts devpts /dev/pts 2>/dev/null
+mount -t debugfs debugfs /sys/kernel/debug 2>/dev/null
+mount -t tracefs tracefs /sys/kernel/tracing 2>/dev/null
+echo "FUXI_INIT_RUNNING" > /dev/kmsg
+# fbcon 接管前 fuxifb console 画的旧日志还留在屏幕上：清屏
+printf '\033[2J\033[H' > /dev/tty1 2>/dev/null
+
+# 安全网：180 秒后自动 reboot -f 回 Android（boot_b 是 stock）。
+# 主机经串口执行 `touch /tmp/keep` 可取消。
+( sleep 180
+  [ -e /tmp/keep ] || { echo "FUXI_SAFETY_REBOOT" > /dev/kmsg; sleep 1; reboot -f; } ) &
+SAFETY_PID=$!
+
+# 读写挂载 linux 分区（sda33）并 switch_root 进 systemd；失败时返回。
+#   $1=auto：开机自动启动（从 boot_a 独立开机），不设强制重启
+#   $1=host：主机经串口 `touch /tmp/do_switch; exit` 触发的实验，加 900 秒 sysrq 安全网
+switch_to_ufs_root() {
+  ROOTDEV=/dev/sda33
+  mkdir -p /newroot
+  mount -t ext4 -o rw,noatime "$ROOTDEV" /newroot || { echo "FUXI_SWITCH_MOUNT_FAIL" > /dev/kmsg; return 1; }
+  [ -x /newroot/lib/systemd/systemd ] || { echo "FUXI_SWITCH_NO_SYSTEMD" > /dev/kmsg; umount /newroot; return 1; }
+  kill "$SAFETY_PID" 2>/dev/null
+  # 串口 shell 让出 ttyGS0（Ubuntu 的 fuxi-serial-shell.service 要用）
+  # 交互式 shell 忽略 SIGTERM，必须 SIGKILL，否则它会带进 Ubuntu 继续占着 ttyGS0
+  [ -n "${SHELL_LOOP:-}" ] && kill -KILL "$SHELL_LOOP" 2>/dev/null
+  pkill -KILL -f "sh -i" 2>/dev/null
+  if [ "$1" = host ]; then
+    # switch_root 之后 initramfs 文件已删，reboot 命令不可用，
+    # 只能用提前打开的 sysrq-trigger 句柄（echo 是 shell 内建）。取消：kill $(cat /dev/fuxi-safety.pid)
+    ( exec 3>/proc/sysrq-trigger; sleep 900; echo s >&3; sleep 2; echo b >&3 ) &
+    echo $! > /dev/fuxi-safety.pid
+  fi
+  echo "FUXI_SWITCH_ROOT $ROOTDEV mode=$1" > /dev/kmsg
+  umount /sys/kernel/debug /sys/kernel/tracing 2>/dev/null
+  mount --move /dev /newroot/dev
+  mount --move /proc /newroot/proc
+  mount --move /sys /newroot/sys
+  exec switch_root /newroot /lib/systemd/systemd
+}
+
+# 主机等串口 shell 的时间窗：主机连上后第一件事是 `touch /tmp/stay`（scripts/fuxi_serial.py）
+AUTOBOOT_WAIT=8
+
+# USB 依赖链要等 late_initcall 的 deferred probe，给足时间
+n=0
+while [ ! -e /dev/ttyGS0 ] && [ "$n" -lt 30 ]; do
+  sleep 1
+  n=$((n + 1))
+done
+
+if [ -e /dev/ttyGS0 ]; then
+  echo "FUXI_USB_SERIAL_READY after ${n}s" > /dev/kmsg
+  # 串口 shell 放后台；退出后重新拉起，直到要 switch_root
+  ( while [ ! -e /tmp/do_switch ]; do
+      setsid -c /bin/sh -i </dev/ttyGS0 >/dev/ttyGS0 2>&1 ||
+        setsid /bin/sh -i </dev/ttyGS0 >/dev/ttyGS0 2>&1
+      sleep 1
+    done ) &
+  SHELL_LOOP=$!
+
+  n=0
+  while [ "$n" -lt "$AUTOBOOT_WAIT" ] && [ ! -e /tmp/stay ] && [ ! -e /tmp/do_switch ]; do
+    sleep 1
+    n=$((n + 1))
+  done
+  if [ -e /tmp/stay ]; then
+    echo "FUXI_STAY: host attached, waiting for /tmp/do_switch" > /dev/kmsg
+    while [ ! -e /tmp/do_switch ]; do sleep 1; done
+    switch_to_ufs_root host
+  else
+    echo "FUXI_AUTOBOOT: no host within ${AUTOBOOT_WAIT}s, booting UFS root" > /dev/kmsg
+    switch_to_ufs_root auto
+  fi
+  # switch_root 失败：串口 shell 留着排查，PID 1 不能退出
+  echo "FUXI_SWITCH_FAILED: serial shell kept" > /dev/kmsg
+  rm -f /tmp/do_switch
+  while true; do
+    setsid -c /bin/sh -i </dev/ttyGS0 >/dev/ttyGS0 2>&1 ||
+      setsid /bin/sh -i </dev/ttyGS0 >/dev/ttyGS0 2>&1
+    sleep 1
+  done
+fi
+
+# USB 没起来也照常尝试启动 UFS 上的系统；不行再出屏幕报告
+switch_to_ufs_root auto
+
+# USB 没起来：生成一屏报告（屏幕约 41 行 × 45 字，超过 45 字会吞字，先按 44 折行）
+D=/sys/kernel/debug/devices_deferred
+R=/tmp/report
+{
+  echo "NO_USB UDC:[$(ls /sys/class/udc 2>/dev/null)]"
+  echo "RPMHREG:[$(ls /sys/bus/platform/drivers/qcom-rpmh-regulator 2>/dev/null | grep -o 'regulators-[0-9]*' | sed 's/regulators-//' | tr '\n' ' ')] FIXED:[$(ls /sys/bus/platform/drivers/reg-fixed-voltage 2>/dev/null | grep -c regulator)]"
+  if [ -r "$D" ]; then
+    echo "DEFER $(wc -l < "$D"):"
+    # 一项一行：去掉公共前缀，"platform: wait for supplier" 缩写为 "->"
+    sed -e 's#/soc@0/rsc@17a00000/##g' -e 's#17a00000\.rsc:##g' -e 's#/soc@0/##g' \
+        -e 's#platform: wait for supplier#->#' -e 's#platform: supplier \([^ ]*\) not ready#=> \1#' -e 's#\t# #' -e 's#  *# #g' "$D" | cut -c1-44 | head -n 24
+  else
+    echo "DEFER list unavailable"
+  fi
+  echo "ERR:"
+  dmesg | sed 's/^\[[^]]*\] *//' | grep -v -e '^calling' -e '^initcall' -e '^fuxi' -e '^IC ' -e '^PRB ' |
+    grep -iE 'fail|error|unable|timed out|timeout|invalid|could not|not found' | grep -v 'pmic_arb\|pmic-spmi' | tail -n 8
+} > "$R" 2>&1
+fold -w 44 "$R" | tail -n 38 | while IFS= read -r l; do echo "$l" > /dev/kmsg; done
+
+# 之后保持安静让报告留在屏幕上；60 秒后自动重启回 Android
+sleep 60
+echo "FUXI_REBOOT_NOW" > /dev/kmsg
+sleep 1
+reboot -f
+while true; do sleep 5; done

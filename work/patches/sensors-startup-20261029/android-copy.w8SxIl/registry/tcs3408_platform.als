@@ -1,0 +1,1 @@
+{"tcs3408_platform.als":{"owner":"sns_tcs3408","fac_cal":{"type":"grp","ver":"0","data":""},"factory_config":{"type":"grp","ver":"0","data":""}}}

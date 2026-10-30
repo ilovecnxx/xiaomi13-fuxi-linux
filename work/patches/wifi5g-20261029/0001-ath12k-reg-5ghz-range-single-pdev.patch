@@ -1,0 +1,21 @@
+--- a/drivers/net/wireless/ath/ath12k/reg.c
++++ b/drivers/net/wireless/ath/ath12k/reg.c
+@@ -323,6 +323,18 @@
+ 	}
+ 
+ 	if (supported_bands & WMI_HOST_WLAN_5GHZ_CAP && ar->supports_6ghz) {
++		/* A single pdev covering 5 GHz and 6 GHz (e.g. WCN7850) needs
++		 * the 5 GHz rules too: countries without 6 GHz rules (e.g. CN)
++		 * would otherwise leave only 2 GHz in the frequency range.
++		 */
++		if (reg_cap->low_5ghz_chan < ATH12K_MIN_6GHZ_FREQ) {
++			freq_low = max(reg_cap->low_5ghz_chan, ab->reg_freq_5ghz.start_freq);
++			freq_high = min(reg_cap->high_5ghz_chan, ab->reg_freq_5ghz.end_freq);
++
++			if (freq_low < freq_high)
++				ath12k_mac_update_freq_range(ar, freq_low, freq_high);
++		}
++
+ 		freq_low = max(reg_cap->low_5ghz_chan, ab->reg_freq_6ghz.start_freq);
+ 		freq_high = min(reg_cap->high_5ghz_chan, ab->reg_freq_6ghz.end_freq);
+ 

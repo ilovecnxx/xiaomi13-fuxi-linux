@@ -1,0 +1,4 @@
+# 追加到 build/initramfs 目录之后的 cpio 条目（目录里不能用普通用户 mknod）
+# /dev/console：内核在挂 devtmpfs 之前就要打开它给 /init 当 stdin/stdout
+dir /dev 0755 0 0
+nod /dev/console 0600 0 0 c 5 1

@@ -1,0 +1,48 @@
+# fuxi native boot probe — 2026-10-24
+
+设备：Xiaomi 13 `fuxi`, serial `f8286c82`
+原始槽位：`b`
+测试方式：只使用 `fastboot boot`，未执行 `flash` / `erase`
+
+## 构建
+
+`./scripts/native-kernel-build.sh`
+
+结果：成功。
+
+- Image: 11,526,656 bytes
+- DTB: 125,393 bytes
+- initramfs.cpio.gz: 1,033,393 bytes
+- bootimg: 12,697,600 bytes
+- 配置：VA/PA 48-bit、SM8550 interconnect、DWC3/QCOM、eUSB2 PHY、USB_G_SERIAL、内置 initramfs
+
+## v2 + ramdisk 实测
+
+```text
+Sending 'boot.img' (12400 KB) OKAY
+Booting FAILED (usb_read failed: No such device)
+```
+
+ABL 接受并发送镜像；设备在 handoff 后从 fastboot USB 断开，随后回到 fastboot，未出现 Android USB CDC ACM 设备，也没有可读的内核日志。
+
+## v4 实测
+
+header v4 镜像同样完成 `Sending OKAY`，在 `Booting` 阶段断开并回到 fastboot。说明当前主要阻塞已从“ABL 是否接受镜像”收敛到“内核早期启动 / fuxi DTB / 启动地址布局 / 设备树资源”。
+
+## 恢复
+
+测试后执行：
+
+```text
+fastboot set_active b
+fastboot reboot
+```
+
+Android 正常重新枚举，关键分区没有写入。
+
+## 下一步
+
+1. 保留当前镜像作为基线，不重复刷写。
+2. 检查 DTB 装载地址和内存保留区，尤其是当前 `dtb_offset=0x01f00000` 对应的低地址保留区。
+3. 加入早期调试通道或 pstore，再做下一轮 `fastboot boot`。
+4. 在 USB 闭环确认前，不进入 UFS、面板和桌面工作。

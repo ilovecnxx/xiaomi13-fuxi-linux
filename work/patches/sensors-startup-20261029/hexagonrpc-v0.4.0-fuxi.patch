@@ -1,0 +1,91 @@
+diff --git a/hexagonrpcd/rpcd.c b/hexagonrpcd/rpcd.c
+index cc1f5cf..1053622 100644
+--- a/hexagonrpcd/rpcd.c
++++ b/hexagonrpcd/rpcd.c
+@@ -467,6 +467,9 @@ int main(int argc, char* argv[])
+ 		goto err_free_pids;
+ 	}
+ 
++#ifdef HEXAGONRPC_VERBOSE
++	setvbuf(stdout, NULL, _IOLBF, 0);
++#endif
+ 	printf("Starting %s (%s) on %s\n", argv[0], attach_sns? "INIT_ATTACH_SNS": "INIT_ATTACH", fastrpc_node);
+ 
+ 	fd = open(fastrpc_node, O_RDWR);
+diff --git a/hexagonrpcd/rpcd_builder.c b/hexagonrpcd/rpcd_builder.c
+index d374958..89b55b5 100644
+--- a/hexagonrpcd/rpcd_builder.c
++++ b/hexagonrpcd/rpcd_builder.c
+@@ -29,8 +29,10 @@
+ #define ACDBDATA		"/acdb/"
+ #define DSP_LIBS		"/dsp/"
+ #define SENSORS_CONFIG		"/sensors/config/"
++#define SENSORS_ODM_CONFIG	"/sensors/odm-config/"
+ #define SENSORS_REGISTRY	"/sensors/registry/"
+ #define SNS_REG_CONFIG		"/sensors/sns_reg.conf"
++#define SNS_REG_VERSION		"/sensors/sns_reg_version"
+ #define SYSFS_SOCINFO		"/socinfo/"
+ 
+ static struct hexagonfs_dirent *hfs_mkdir(const char *name, size_t n_ents, ...)
+@@ -112,6 +114,7 @@ static struct hexagonfs_dirent *hfs_map_or_empty(const char *name, const char *p
+ struct hexagonfs_dirent *construct_root_dir(const char *prefix, const char *dsp)
+ {
+ 	char *acdbdata, *dsp_libs, *sns_cfg, *sns_reg, *sns_reg_config, *socinfo;
++	char *sns_odm_cfg, *sns_reg_version;
+ 	size_t n_prefix;
+ 	struct hexagonfs_dirent *persist_dir, *vendor_dir;
+ 
+@@ -119,6 +122,8 @@ struct hexagonfs_dirent *construct_root_dir(const char *prefix, const char *dsp)
+ 
+ 	acdbdata = malloc(n_prefix + strlen(ACDBDATA) + 1);
+ 	sns_cfg = malloc(n_prefix + strlen(SENSORS_CONFIG) + 1);
++	sns_odm_cfg = malloc(n_prefix + strlen(SENSORS_ODM_CONFIG) + 1);
++	sns_reg_version = malloc(n_prefix + strlen(SNS_REG_VERSION) + 1);
+ 	sns_reg = malloc(n_prefix + strlen(SENSORS_REGISTRY) + 1);
+ 	sns_reg_config = malloc(n_prefix + strlen(SNS_REG_CONFIG) + 1);
+ 	socinfo = malloc(n_prefix + strlen(SYSFS_SOCINFO) + 1);
+@@ -140,6 +145,16 @@ struct hexagonfs_dirent *construct_root_dir(const char *prefix, const char *dsp)
+ 		strcat(sns_reg, SENSORS_REGISTRY);
+ 	}
+ 
++	if (sns_odm_cfg != NULL) {
++		strcpy(sns_odm_cfg, prefix);
++		strcat(sns_odm_cfg, SENSORS_ODM_CONFIG);
++	}
++
++	if (sns_reg_version != NULL) {
++		strcpy(sns_reg_version, prefix);
++		strcat(sns_reg_version, SNS_REG_VERSION);
++	}
++
+ 	if (sns_reg_config != NULL) {
+ 		strcpy(sns_reg_config, prefix);
+ 		strcat(sns_reg_config, SNS_REG_CONFIG);
+@@ -162,8 +177,9 @@ struct hexagonfs_dirent *construct_root_dir(const char *prefix, const char *dsp)
+ 	 */
+ 	persist_dir = hfs_mkdir("persist", 1,
+ 				hfs_mkdir("sensors", 1,
+-					hfs_mkdir("registry", 1,
+-						hfs_map("registry", sns_reg)
++					hfs_mkdir("registry", 2,
++						hfs_map("registry", sns_reg),
++						hfs_map("sns_reg_version", sns_reg_version)
+ 					)
+ 				)
+ 		      );
+@@ -182,7 +198,14 @@ struct hexagonfs_dirent *construct_root_dir(const char *prefix, const char *dsp)
+ 				)
+ 			);
+ 
+-	return hfs_mkdir("/", 6,
++	return hfs_mkdir("/", 7,
++			hfs_mkdir("odm", 1,
++				hfs_mkdir("etc", 1,
++					hfs_mkdir("sensors", 1,
++						hfs_map_or_empty("config", sns_odm_cfg)
++					)
++				)
++			),
+ 			hfs_mkdir("mnt", 1,
+ 				hfs_mkdir("vendor", 1,
+ 					persist_dir

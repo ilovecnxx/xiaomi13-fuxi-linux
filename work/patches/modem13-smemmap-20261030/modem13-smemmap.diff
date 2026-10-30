@@ -1,0 +1,119 @@
+--- a/drivers/net/ipa/ipa.h
++++ b/drivers/net/ipa/ipa.h
+@@ -51,6 +51,7 @@
+  * @imem_size:		Size of IMEM region
+  * @smem_iova:		I/O virtual address of IPA region in SMEM
+  * @smem_size:		Size of SMEM region
++ * @smem_modem_owned:	Modem allocates the SMEM item; whole SMEM is mapped
+  * @zero_addr:		DMA address of preallocated zero-filled memory
+  * @zero_virt:		Virtual address of preallocated zero-filled memory
+  * @zero_size:		Size (bytes) of preallocated zero-filled memory
+@@ -105,6 +106,7 @@
+ 
+ 	unsigned long smem_iova;
+ 	size_t smem_size;
++	bool smem_modem_owned;
+ 
+ 	dma_addr_t zero_addr;
+ 	void *zero_virt;
+--- a/drivers/net/ipa/ipa_mem.c
++++ b/drivers/net/ipa/ipa_mem.c
+@@ -7,6 +7,7 @@
+ #include <linux/dma-mapping.h>
+ #include <linux/io.h>
+ #include <linux/iommu.h>
++#include <linux/of.h>
+ #include <linux/of_address.h>
+ #include <linux/platform_device.h>
+ #include <linux/types.h>
+@@ -509,6 +510,61 @@
+ 	ipa->imem_iova = 0;
+ }
+ 
++/* The Xiaomi 13 (fuxi) modem firmware allocates SMEM_IPA_FILTER_TABLE
++ * itself, and asserts if the AP has already allocated it.  The IPA still
++ * reaches that item through the AP's SMMU context, at the physical address
++ * the modem chose.  So map the whole SMEM region one-to-one rather than a
++ * single item allocated here.
++ */
++static int ipa_smem_map_region(struct ipa *ipa)
++{
++	struct device *dev = ipa->dev;
++	struct iommu_domain *domain;
++	struct device_node *np;
++	struct resource res;
++	phys_addr_t phys;
++	size_t size;
++	int ret;
++
++	np = of_find_compatible_node(NULL, NULL, "qcom,smem");
++	if (!np) {
++		dev_err(dev, "no SMEM node found\n");
++		return -ENODEV;
++	}
++
++	ret = of_address_to_resource(np, 0, &res);
++	of_node_put(np);
++	if (ret) {
++		dev_err(dev, "error %d getting SMEM region\n", ret);
++		return ret;
++	}
++
++	domain = iommu_get_domain_for_dev(dev);
++	if (!domain) {
++		dev_err(dev, "no IOMMU domain found for SMEM\n");
++		return -EINVAL;
++	}
++
++	phys = res.start & PAGE_MASK;
++	size = PAGE_ALIGN(resource_size(&res) + res.start - phys);
++
++	ret = iommu_map(domain, phys, phys, size, IOMMU_READ | IOMMU_WRITE,
++			GFP_KERNEL);
++	if (ret) {
++		dev_err(dev, "error %d mapping SMEM region\n", ret);
++		return ret;
++	}
++
++	ipa->smem_iova = phys;
++	ipa->smem_size = size;
++	ipa->smem_modem_owned = true;
++
++	dev_info(dev, "fuxi: mapped SMEM %pa size %#zx, item %u left to modem\n",
++		 &phys, size, SMEM_IPA_FILTER_TABLE);
++
++	return 0;
++}
++
+ /**
+  * ipa_smem_init() - Initialize SMEM memory used by the IPA
+  * @ipa:	IPA pointer
+@@ -539,6 +595,9 @@
+ 	if (!size)
+ 		return 0;	/* SMEM memory not used */
+ 
++	if (of_machine_is_compatible("xiaomi,fuxi"))
++		return ipa_smem_map_region(ipa);
++
+ 	/* SMEM is memory shared between the AP and another system entity
+ 	 * (in this case, the modem).  An allocation from SMEM is persistent
+ 	 * until the AP reboots; there is no way to free an allocated SMEM
+@@ -618,6 +677,7 @@
+ 
+ 	ipa->smem_size = 0;
+ 	ipa->smem_iova = 0;
++	ipa->smem_modem_owned = false;
+ }
+ 
+ /* Perform memory region-related initialization */
+--- a/drivers/net/ipa/ipa_qmi.c
++++ b/drivers/net/ipa/ipa_qmi.c
+@@ -416,7 +416,7 @@
+ 				IPA_QMI_MODEM_FNR_COUNT - 1;
+ 		}
+ 
+-		if (ipa->smem_size) {
++		if (ipa->smem_size && !ipa->smem_modem_owned) {
+ 			req.smem_info_valid = 1;
+ 			req.smem_info.size = ipa->smem_size;
+ 

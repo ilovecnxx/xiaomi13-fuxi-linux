@@ -1,0 +1,141 @@
+diff --git a/drivers/firmware/qcom/qcom_scm.c b/drivers/firmware/qcom/qcom_scm.c
+index 43e250fae..8eb5b5192 100644
+--- a/drivers/firmware/qcom/qcom_scm.c
++++ b/drivers/firmware/qcom/qcom_scm.c
+@@ -590,16 +590,28 @@ static int __qcom_scm_pas_init_image(struct device *dev, u32 pas_id,
+ 	int ret;
+ 
+ 	ret = qcom_scm_clk_enable();
+-	if (ret)
++	if (ret) {
++		dev_err(dev, "PAS init image %u: clock enable failed: %d\n",
++			pas_id, ret);
+ 		return ret;
++	}
+ 
+ 	ret = qcom_scm_bw_enable();
+-	if (ret)
++	if (ret) {
++		dev_err(dev, "PAS init image %u: bandwidth enable failed: %d\n",
++			pas_id, ret);
+ 		goto disable_clk;
++	}
+ 
+ 	desc.args[1] = mdata_phys;
+ 
+ 	ret = qcom_scm_call(dev, &desc, res);
++	if (ret)
++		dev_err(dev, "PAS init image %u: SCM call failed: %d\n",
++			pas_id, ret);
++	else if (res->result[0])
++		dev_err(dev, "PAS init image %u: secure result=%lld\n",
++			pas_id, (s64)res->result[0]);
+ 	qcom_scm_bw_disable();
+ 
+ disable_clk:
+@@ -618,8 +630,11 @@ static int qcom_scm_pas_prep_and_init_image(struct device *dev,
+ 	int ret;
+ 
+ 	mdata_buf = qcom_tzmem_alloc(__scm->mempool, size, GFP_KERNEL);
+-	if (!mdata_buf)
++	if (!mdata_buf) {
++		dev_err(dev, "PAS init image %u: TZ memory allocation failed for %zu bytes\n",
++			ctx->pas_id, size);
+ 		return -ENOMEM;
++	}
+ 
+ 	memcpy(mdata_buf, metadata, size);
+ 	mdata_phys = qcom_tzmem_to_phys(mdata_buf);
+@@ -658,8 +673,11 @@ static int qcom_scm_pas_init_image(struct device *dev, u32 pas_id,
+ 	 * call, it will fail.
+ 	 */
+ 	mdata_buf = dma_alloc_coherent(dev, size, &mdata_phys, GFP_KERNEL);
+-	if (!mdata_buf)
++	if (!mdata_buf) {
++		dev_err(dev, "PAS init image %u: coherent allocation failed for %zu bytes\n",
++			pas_id, size);
+ 		return -ENOMEM;
++	}
+ 
+ 	memcpy(mdata_buf, metadata, size);
+ 
+diff --git a/drivers/soc/qcom/pdr_interface.c b/drivers/soc/qcom/pdr_interface.c
+index 6d879e154..e48e84737 100644
+--- a/drivers/soc/qcom/pdr_interface.c
++++ b/drivers/soc/qcom/pdr_interface.c
+@@ -386,6 +386,30 @@ static int pdr_get_domain_list(struct servreg_get_domain_list_req *req,
+ 		return -EREMOTEIO;
+ 	}
+ 
++	if (!strcmp(req->service_name, "tms/servreg")) {
++		unsigned int i;
++
++		pr_info("PDR: %s domain list offset=%u total_valid=%u total=%u list_valid=%u len=%u\n",
++			req->service_name, req->domain_offset,
++			resp->total_domains_valid,
++			resp->total_domains_valid ? resp->total_domains : 0,
++			resp->domain_list_valid,
++			resp->domain_list_valid ? resp->domain_list_len : 0);
++
++		if (!resp->domain_list_valid)
++			return 0;
++
++		for (i = 0; i < resp->domain_list_len; i++) {
++			struct servreg_location_entry *entry = &resp->domain_list[i];
++
++			pr_info("PDR: %s domain[%u] name=%.*s data_valid=%u data=0x%x instance=%u\n",
++				req->service_name, i,
++				(int)strnlen(entry->name, sizeof(entry->name)),
++				entry->name, entry->service_data_valid,
++				entry->service_data, entry->instance);
++		}
++	}
++
+ 	return 0;
+ }
+ 
+@@ -400,6 +424,10 @@ static int pdr_locate_service(struct pdr_handle *pdr, struct pdr_service *pds)
+ 	if (!resp)
+ 		return -ENOMEM;
+ 
++	if (!strcmp(pds->service_name, "tms/servreg"))
++		pr_info("PDR: locating service name=%s path=%s\n",
++			pds->service_name, pds->service_path);
++
+ 	/* Prepare req message */
+ 	strscpy(req.service_name, pds->service_name, sizeof(req.service_name));
+ 	req.domain_offset_valid = true;
+@@ -421,6 +449,10 @@ static int pdr_locate_service(struct pdr_handle *pdr, struct pdr_service *pds)
+ 				pds->service_data_valid = entry->service_data_valid;
+ 				pds->service_data = entry->service_data;
+ 				pds->instance = entry->instance;
++				if (!strcmp(pds->service_name, "tms/servreg"))
++					pr_info("PDR: matched service name=%s path=%s instance=%u\n",
++						pds->service_name, pds->service_path,
++						pds->instance);
+ 				return 0;
+ 			}
+ 		}
+@@ -435,6 +467,11 @@ static int pdr_locate_service(struct pdr_handle *pdr, struct pdr_service *pds)
+ 		domains_read += resp->domain_list_len;
+ 	} while (domains_read < resp->total_domains);
+ 
++	if (ret == -ENXIO && !strcmp(pds->service_name, "tms/servreg"))
++		pr_info("PDR: service name=%s path=%s not found after %d domains (total_valid=%u total=%u)\n",
++			pds->service_name, pds->service_path, domains_read,
++			resp->total_domains_valid, resp->total_domains);
++
+ 	return ret;
+ }
+ 
+@@ -442,8 +479,8 @@ static void pdr_notify_lookup_failure(struct pdr_handle *pdr,
+ 				      struct pdr_service *pds,
+ 				      int err)
+ {
+-	pr_err("PDR: service lookup for %s failed: %d\n",
+-	       pds->service_name, err);
++	pr_err("PDR: service lookup for %s path %s failed: %d\n",
++	       pds->service_name, pds->service_path, err);
+ 
+ 	if (err == -ENXIO)
+ 		return;

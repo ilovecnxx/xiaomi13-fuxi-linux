@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+"""msgfmt 的最小兼容替身：把 .po 转成合法的 GNU MO 文件。
+
+只在 edk2-msm 构建 SimpleInit 翻译资源时被调用，本机没有 gettext 也没有 sudo，
+因此提供一个纯 Python 实现（标准 MO 格式，小端）。
+
+用法兼容: msgfmt -o OUTPUT INPUT.po
+"""
+import struct
+import sys
+
+
+def parse_po(path):
+    pairs = []
+    msgid = None
+    msgstr = None
+    cur = None          # 'id' 或 'str'
+    fuzzy = False
+
+    def unescape(s):
+        return (s.replace("\\n", "\n").replace("\\t", "\t")
+                 .replace('\\"', '"').replace("\\\\", "\\"))
+
+    with open(path, encoding="utf-8") as fh:
+        for raw in fh:
+            line = raw.strip()
+            if not line:
+                if msgid is not None and msgstr is not None and not fuzzy:
+                    pairs.append((msgid, msgstr))
+                msgid = msgstr = None
+                cur = None
+                fuzzy = False
+                continue
+            if line.startswith("#"):
+                if "fuzzy" in line:
+                    fuzzy = True
+                continue
+            if line.startswith("msgid "):
+                msgid = unescape(line[6:].strip().strip('"'))
+                cur = "id"
+            elif line.startswith("msgstr "):
+                msgstr = unescape(line[7:].strip().strip('"'))
+                cur = "str"
+            elif line.startswith('"'):
+                val = unescape(line.strip().strip('"'))
+                if cur == "id":
+                    msgid = (msgid or "") + val
+                elif cur == "str":
+                    msgstr = (msgstr or "") + val
+    if msgid is not None and msgstr is not None and not fuzzy:
+        pairs.append((msgid, msgstr))
+    return pairs
+
+
+def write_mo(pairs, out):
+    pairs = sorted(pairs, key=lambda p: p[0].encode("utf-8"))
+    n = len(pairs)
+    ids = b""
+    strs = b""
+    id_tab = []
+    str_tab = []
+    base = 28 + 8 * n + 8 * n
+    for k, v in pairs:
+        kb, vb = k.encode("utf-8"), v.encode("utf-8")
+        id_tab.append((len(kb), base + len(ids)))
+        ids += kb + b"\x00"
+    str_base = base + len(ids)
+    for k, v in pairs:
+        vb = v.encode("utf-8")
+        str_tab.append((len(vb), str_base + len(strs)))
+        strs += vb + b"\x00"
+    blob = struct.pack("<7I", 0x950412DE, 0, n, 28, 28 + 8 * n, 0, 0)
+    for length, off in id_tab:
+        blob += struct.pack("<2I", length, off)
+    for length, off in str_tab:
+        blob += struct.pack("<2I", length, off)
+    blob += ids + strs
+    with open(out, "wb") as fh:
+        fh.write(blob)
+
+
+def main(argv):
+    out = None
+    src = None
+    i = 1
+    while i < len(argv):
+        a = argv[i]
+        if a == "-o":
+            out = argv[i + 1]
+            i += 2
+            continue
+        if not a.startswith("-"):
+            src = a
+        i += 1
+    if not out or not src:
+        print("用法: msgfmt -o 输出.mo 输入.po", file=sys.stderr)
+        return 2
+    write_mo(parse_po(src), out)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

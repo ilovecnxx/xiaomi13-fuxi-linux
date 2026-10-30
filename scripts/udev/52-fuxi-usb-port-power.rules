@@ -1,0 +1,5 @@
+# fuxi 调试：允许 plugdev 组给 USB 根集线器的端口断电/上电（usbN-portM/disable），
+# 用来在 ABL fastboot 认不到时"软件拔插"（scripts/fuxi-run.sh 的 usb_cycle）。
+# 安装：sudo cp scripts/udev/52-fuxi-usb-port-power.rules /etc/udev/rules.d/ && sudo udevadm control --reload && sudo udevadm trigger -s usb
+ACTION=="add|change", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_interface", KERNEL=="*-0:1.0", \
+  RUN+="/bin/sh -c 'for f in /sys%p/usb*-port*/disable; do chgrp plugdev $f && chmod 0664 $f; done'"

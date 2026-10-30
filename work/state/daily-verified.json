@@ -1,0 +1,75 @@
+{
+  "verified_date": "2026-10-29",
+  "timezone": "Asia/Shanghai",
+  "image": "work/kbuild/abl-fuxi-daily-pm1.img",
+  "image_sha256": "3b02fd600d16c41af37503495962046f8733eb014f297a3ac7e0de88c0bbced8",
+  "kernel": "7.3.0+ #168",
+  "device_final_state": "Historical daily-pm1 verification state: Linux, systemd running, Phosh and sensors active; see current-device.json for the current candidate",
+  "read_only_health_failures": 0,
+  "cpufreq_policies": 3,
+  "thermal_zones": 43,
+  "cpu_cooling_devices": 3,
+  "android_roundtrip_seconds": 37,
+  "linux_ssh_return_seconds": 20,
+  "recovery_backup": "work/backup/daily-pm-20261029/recovery_b-before.img",
+  "verification_log": "work/claude-logs/roundtrip-daily-pm1-20261029.log",
+  "report": "docs/进展-20261029.md",
+  "remaining_issues": [
+    "Sensor physical orientation, proximity transitions and desktop actions not validated; firmware mount matrix is zero",
+    "DSP temporary/calibration writes remain denied; long-term sensor operation and suspend/resume not validated",
+    "Two-worker short load stopped at the test limit of 80 C; sustained thermal validation incomplete",
+    "WiFi association, internet and WiFi SSH not verified",
+    "Deep idle, suspend, battery life and physical charging not verified",
+    "Native display/GPU, audio, cameras and modem remain experimental"
+  ],
+  "sensor_validation": {
+    "date": "2026-10-29",
+    "normal_daemon_sha256": "b62357e94f318f0730e6a02ea44a5fe443e496cb71318043858086f54636db14",
+    "raw_measurements_verified": [
+      "accelerometer",
+      "light",
+      "proximity",
+      "magnetometer",
+      "compass"
+    ],
+    "sensorproxy_types_verified": [
+      "accelerometer",
+      "ambient_light",
+      "proximity",
+      "compass"
+    ],
+    "qrtr_service": 400,
+    "clean_normal_boots_verified": 2,
+    "boot_ids": [
+      "4291e9d6-113f-4e8b-9245-48ff1b28eaa6",
+      "247b61a7-ce3a-4a03-ac30-31674a9977db"
+    ],
+    "phosh_restarts_each_boot": [
+      0,
+      0
+    ],
+    "sensorproxy_restarts_each_boot": [
+      0,
+      0
+    ],
+    "adsp_crashes_observed_each_boot": [
+      0,
+      0
+    ],
+    "health_failures_each_boot": [
+      0,
+      0
+    ],
+    "mount_matrix": "Firmware reports zeros; libssc uses identity; physical orientation not validated",
+    "logs": [
+      "work/claude-logs/startup-20261029/deploy-final.log",
+      "work/claude-logs/startup-20261029/roundtrip-sensors-1.log",
+      "work/claude-logs/startup-20261029/roundtrip-sensors-2.log",
+      "work/claude-logs/startup-20261029/health-sensors-boot1.log",
+      "work/claude-logs/startup-20261029/health-sensors-boot2.log",
+      "work/claude-logs/startup-20261029/services-normal-boot2.log"
+    ],
+    "report": "docs/传感器启动修复-20261029.md"
+  },
+  "current_device_state_file": "work/state/current-device.json"
+}

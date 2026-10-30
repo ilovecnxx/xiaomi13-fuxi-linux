@@ -1,0 +1,12 @@
+#!/usr/bin/busybox-static sh
+# fuxi 主线内核：g_cdc ECM 网卡 usb0 配静态地址；主机 NetworkManager 共享连接 fuxi-usb 是 10.42.0.1（NAT）
+# 默认路由 metric 700：WiFi（NetworkManager 600）优先，USB 只兜底；拔线后 carrier=0，
+# ignore_routes_with_linkdown 让内核不再用这条路由，独立使用时不会把外网流量送进已断开的 USB。
+BB=/usr/bin/busybox-static
+for i in 1 2 3 4 5 6 7 8 9 10; do [ -e /sys/class/net/usb0 ] && break; sleep 1; done
+echo 1 > /proc/sys/net/ipv4/conf/usb0/ignore_routes_with_linkdown
+$BB ip link set lo up
+$BB ip link set usb0 up
+$BB ip addr flush dev usb0
+$BB ip addr add 10.42.0.2/24 dev usb0
+$BB ip route add default via 10.42.0.1 metric 700 || true

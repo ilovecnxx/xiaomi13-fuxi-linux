@@ -1,0 +1,15 @@
+[Unit]
+Description=fuxi: set the WCN7850 Bluetooth public address (controller has none)
+# QCA 固件要等 bluetoothd 第一次打开 hci0 才下载，下载完 hci0 才变成 "Unconfigured"；
+# 所以排在 bluetoothd 之后：等到 Unconfigured → 设地址 → 重启一次 bluetoothd（10-28 实测）
+After=fuxi-firmware-devices.service bluetooth.service
+Wants=bluetooth.service
+ConditionPathExists=/etc/fuxi/bt-address
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/fuxi-bt-address
+
+[Install]
+WantedBy=multi-user.target

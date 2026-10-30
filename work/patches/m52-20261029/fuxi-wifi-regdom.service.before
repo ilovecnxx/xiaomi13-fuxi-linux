@@ -1,0 +1,13 @@
+[Unit]
+Description=fuxi: set the WiFi regulatory domain (default world "00" limits 5 GHz)
+After=fuxi-firmware-devices.service
+Before=NetworkManager.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# 国家码：/etc/fuxi/wifi-country（没有就用 CN）
+ExecStart=/bin/sh -c 'c=$(cat /etc/fuxi/wifi-country 2>/dev/null || echo CN); iw reg set "$c" && echo "regdom $c"'
+
+[Install]
+WantedBy=multi-user.target

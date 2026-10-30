@@ -1,0 +1,479 @@
+
+===== 探测时间 =====
+2026-10-24T16:01:33+08:00
+
+===== adb 版本 =====
+Android Debug Bridge version 1.0.41
+Version 37.0.1-15733141
+Installed as /home/user/文档/deepseek-harness/default-workspace/linux-android/tools/platform-tools/adb
+Running on Linux 7.3.0-9-generic (x86_64)
+
+===== 设备列表 =====
+List of devices attached
+f8286c82               device usb:1-1 product:lineage_fuxi model:2211133C device:fuxi transport_id:1
+
+
+===== 构建属性 =====
+[ro.boot.dynamic_partitions]: [true]
+[ro.boot.flash.locked]: [0]
+[ro.boot.slot_suffix]: [_b]
+[ro.boot.verifiedbootstate]: [orange]
+[ro.build.ab_update]: [true]
+[ro.build.date]: [Mon Oct 19 00:03:40 UTC 2026]
+[ro.build.date.utc]: [1792368220]
+[ro.build.flavor]: [lineage_fuxi-userdebug]
+[ro.build.type]: [userdebug]
+[ro.build.version.incremental]: [410b496ea9]
+[ro.build.version.release]: [17]
+[ro.build.version.release_or_codename]: [17]
+[ro.build.version.release_or_preview_display]: [17]
+[ro.build.version.sdk]: [37]
+[ro.build.version.sdk_full]: [37.0]
+[ro.build.version.security_patch]: [2026-10-01]
+[ro.debuggable]: [0]
+[ro.lineage.build.version]: [24.0]
+[ro.lineage.device]: [fuxi]
+[ro.lineage.display.version]: [24-20261019-NIGHTLY-fuxi]
+[ro.lineage.releasetype]: [NIGHTLY]
+[ro.lineage.version]: [24.0-20261019-NIGHTLY-fuxi]
+[ro.product.brand]: [Xiaomi]
+[ro.product.cpu.abilist]: [arm64-v8a]
+[ro.product.cpu.abilist32]: []
+[ro.product.cpu.abilist64]: [arm64-v8a]
+[ro.product.cpu.pagesize.max]: [4096]
+[ro.product.device]: [fuxi]
+[ro.product.model]: [2211133C]
+[ro.product.name]: [lineage_fuxi]
+[ro.secure]: [1]
+[ro.treble.enabled]: [true]
+
+===== 内核版本 =====
+Linux localhost 5.15.211-g9d5787a9b37e #1 SMP PREEMPT Mon Oct 19 01:10:14 UTC 2026 aarch64 Toybox
+---
+Linux version 5.15.211-g9d5787a9b37e (root@0665874ea1d4) (Android (15071444, +pgo, +bolt, +lto, +mlgo, based on r596125) clang version 22.0.2 (https://android.googlesource.com/toolchain/llvm-project de03d430485c884861198b25459851f429cbdbad), LLD 22.0.2 (/mnt/disks/build-disk/src/googleplex-android/llvm-r596125-release/out/llvm-project/llvm de03d430485c884861198b25459851f429cbdbad)) #1 SMP PREEMPT Mon Oct 19 01:10:14 UTC 2026
+---
+stack_depot_disable=on kasan.stacktrace=off kvm-arm.mode=protected cgroup_disable=pressure console=ttyMSM0,115200n8 kpti=0 kernel.panic_on_rcu_stall=1 service_locator.enable=1 msm_rtb.filter=0x237 rcupdate.rcu_expedited=1 rcu_nocbs=0-7 ftrace_dump_on_oops swiotlb=noforce loop.max_part=7 fw_devlink.strict=1 allow_mismatched_32bit_el0 cpufreq.default_governor=performance printk.console_no_auto_verbose=0 kasan=off sysctl.kernel.sched_pelt_multiplier=4 can.stats_timer=0 pcie_ports=compat irqaffinity=0-2 disable_dma32=on no-steal-acc cgroup.memory=nokmem,nosocket mtdoops.fingerprint=24.0-20261019-NIGHTLY-fuxi swinfo.fingerprint=24.0-20261019-NIGHTLY-fuxi bootconfig  bootinfo.pureason=0x80080 bootinfo.pdreason=0x2 debug_ext.initrd_size=14141 hwid.hwid_value=589824 hwid.project=2 hwid.build_adc=29277 hwid.project_adc=4467 msm_drm.dsi_display0=qcom,mdss_dsi_m3_38_0c_0a_dsc_cmd: msm_drm.oled_wp=0bb60c49 msm_drm.debugpolicy=0x20 rootwait ro init=/init log_buf_len=2M loglevel=6 qcom_geni_serial.con_enabled=0 block2mtd.block2mtd=/dev/block/sda16,2097152 mtdoops.mtddev=0 mtdoops.record_size=2097152 mtdoops.dump_oops=0 printk.always_kmsg_dump=1 silent_boot.mode=nonsilent
+
+===== 页大小 =====
+4096
+
+===== 当前身份 =====
+uid=2000(shell) gid=2000(shell) groups=2000(shell),1004(input),1007(log),1011(adb),1015(sdcard_rw),1028(sdcard_r),1078(ext_data_rw),1079(ext_obb_rw),3001(net_bt_admin),3002(net_bt),3003(inet),3006(net_bw_stats),3009(readproc),3011(uhid),3012(readtracefs) context=u:r:shell:s0
+---
+Enforcing
+---
+[命令失败]
+
+===== adb root 尝试 =====
+restarting adbd as root
+
+===== adb root 后身份 =====
+uid=0(root) gid=0(root) groups=0(root),1004(input),1007(log),1011(adb),1015(sdcard_rw),1028(sdcard_r),1078(ext_data_rw),1079(ext_obb_rw),3001(net_bt_admin),3002(net_bt),3003(inet),3006(net_bw_stats),3009(readproc),3011(uhid),3012(readtracefs) context=u:r:su:s0
+Enforcing
+
+===== by-name 分区 =====
+ALIGN_TO_128K_1
+ALIGN_TO_128K_2
+abl_a
+abl_b
+aop_a
+aop_b
+aop_config_a
+aop_config_b
+apdp
+apdpb
+bk01
+bk010
+bk02
+bk03
+bk04
+bk05
+bk31
+bk32
+bk41_a
+bk41_b
+bk42
+bk43
+bk51
+bluetooth_a
+bluetooth_b
+boot_a
+boot_b
+cdt
+connsec
+countrycode
+cpucp_a
+cpucp_b
+crash_history
+cust
+dbg
+ddr
+devcfg_a
+devcfg_b
+devinfo
+dip
+dsp_a
+dsp_b
+dtbo_a
+dtbo_b
+featenabler_a
+featenabler_b
+ffu
+frp
+fsc
+fsg
+gsort
+hyp_a
+hyp_b
+imagefv_a
+imagefv_b
+init_boot_a
+init_boot_b
+keymaster_a
+keymaster_b
+keystore
+limits
+limits-cdsp
+linux
+logfs
+mbnconfig
+mdcompress
+mdtp_a
+mdtp_b
+mdtpsecapp_a
+mdtpsecapp_b
+mem
+metadata
+minidump
+misc
+modem_a
+modem_b
+modemst1
+modemst2
+mtdblk
+multiimgoem_a
+multiimgoem_b
+multiimgqti_a
+multiimgqti_b
+oops
+opconfig
+persist
+qmcs
+qupfw_a
+qupfw_b
+qweslicstore_a
+qweslicstore_b
+rawdump
+recovery_a
+recovery_b
+rescue
+rticmpdata_a
+rticmpdata_b
+sda
+sdb
+sdc
+sdd
+sde
+sdf
+secdata
+shrm_a
+shrm_b
+splash
+spunvm
+ssd
+storsec
+super
+switch
+toolsfv
+tz_a
+tz_b
+tzsc
+uefi_a
+uefi_b
+uefisecapp_a
+uefisecapp_b
+uefivarstore
+userdata
+vbmeta_a
+vbmeta_b
+vbmeta_system_a
+vbmeta_system_b
+vendor_boot_a
+vendor_boot_b
+xbl_a
+xbl_b
+xbl_config_a
+xbl_config_b
+xbl_ramdump_a
+xbl_ramdump_b
+xbl_sc_logs
+xbl_sc_test_mode
+
+===== 分区表 =====
+major minor  #blocks  name
+
+   1        0       8192 ram0
+   1        1       8192 ram1
+   1        2       8192 ram2
+   1        3       8192 ram3
+   1        4       8192 ram4
+   1        5       8192 ram5
+   1        6       8192 ram6
+   1        7       8192 ram7
+   1        8       8192 ram8
+   1        9       8192 ram9
+   1       10       8192 ram10
+   1       11       8192 ram11
+   1       12       8192 ram12
+   1       13       8192 ram13
+   1       14       8192 ram14
+   1       15       8192 ram15
+   7        0       1188 loop0
+   7        8        852 loop1
+   7       16       8504 loop2
+   7       24      37916 loop3
+   7       32      30032 loop4
+   7       40       5960 loop5
+   7       48       1188 loop6
+   7       56      29344 loop7
+   7       64        372 loop8
+   7       72        852 loop9
+   7       80        268 loop10
+   7       88       2420 loop11
+   7       96       8196 loop12
+   7      104       4036 loop13
+   7      112      34604 loop14
+   7      120       1184 loop15
+   8        0  497324032 sda
+   8        1          8 sda1
+   8        2         32 sda2
+   8        3         32 sda3
+   8        4         32 sda4
+   8        5        128 sda5
+   8        6        256 sda6
+   8        7        512 sda7
+   8        8        512 sda8
+   8        9        512 sda9
+   8       10       2048 sda10
+   8       11       4096 sda11
+   8       12       8192 sda12
+   8       13       8192 sda13
+   8       14       8192 sda14
+   8       15      16384 sda15
+ 259        0      16384 sda16
+ 259        1      65536 sda17
+ 259        2      65536 sda18
+ 259        3      32768 sda19
+ 259        4      59392 sda20
+ 259        5      98304 sda21
+ 259        6     307200 sda22
+ 259        7      26624 sda23
+ 259        8        128 sda24
+ 259        9        128 sda25
+ 259       10       4096 sda26
+ 259       11      20480 sda27
+ 259       12      32768 sda28
+ 259       13     131072 sda29
+ 259       14    2097152 sda30
+ 259       15    9437184 sda31
+ 259       16  380022520 sda32
+ 259       17  104857576 sda33
+   8       16      20480 sdb
+   8       17       8192 sdb1
+   8       18        512 sdb2
+   8       19         32 sdb3
+   8       20         32 sdb4
+   8       21        256 sdb5
+   8       32      20480 sdc
+   8       33       8192 sdc1
+   8       34        512 sdc2
+   8       35         32 sdc3
+   8       36         32 sdc4
+   8       37        256 sdc5
+   8       48      32768 sdd
+   8       49        104 sdd1
+   8       50       1024 sdd2
+   8       51        128 sdd3
+   8       52       2048 sdd4
+   8       53       2048 sdd5
+   8       64    2355200 sde
+   8       65       5120 sde1
+   8       66        512 sde2
+   8       67        512 sde3
+   8       68       2048 sde4
+   8       69       4096 sde5
+   8       70       8192 sde6
+   8       71     458752 sde7
+   8       72       6144 sde8
+   8       73       4096 sde9
+   8       74      32768 sde10
+   8       75       8192 sde11
+   8       76      65536 sde12
+   8       77        512 sde13
+   8       78     196608 sde14
+   8       79        256 sde15
+ 259       18        128 sde16
+ 259       19        128 sde17
+ 259       20      24576 sde18
+ 259       21       2048 sde19
+ 259       22      49152 sde20
+ 259       23        128 sde21
+ 259       24       1024 sde22
+ 259       25        128 sde23
+ 259       26      98304 sde24
+ 259       27      30720 sde25
+ 259       28        256 sde26
+ 259       29     102400 sde27
+ 259       30       2048 sde28
+ 259       31         52 sde29
+ 259       32       8192 sde30
+ 259       33       5120 sde31
+ 259       34        512 sde32
+ 259       35        512 sde33
+ 259       36       2048 sde34
+ 259       37       4096 sde35
+ 259       38       8192 sde36
+ 259       39     458752 sde37
+ 259       40       6144 sde38
+ 259       41       4096 sde39
+ 259       42      32768 sde40
+ 259       43       8192 sde41
+ 259       44      65536 sde42
+ 259       45        512 sde43
+ 259       46     196608 sde44
+ 259       47        256 sde45
+ 259       48        128 sde46
+ 259       49        128 sde47
+ 259       50      24576 sde48
+ 259       51       2048 sde49
+ 259       52      49152 sde50
+ 259       53        128 sde51
+ 259       54       1024 sde52
+ 259       55        128 sde53
+ 259       56      98304 sde54
+ 259       57        256 sde55
+ 259       58     102400 sde56
+ 259       59       2048 sde57
+ 259       60         52 sde58
+ 259       61       8192 sde59
+ 259       62       1024 sde60
+ 259       63        512 sde61
+ 259       64      33424 sde62
+ 259       65         32 sde63
+ 259       66         32 sde64
+ 259       67       1024 sde65
+ 259       68      16384 sde66
+ 259       69      32768 sde67
+ 259       70        128 sde68
+ 259       71        512 sde69
+ 259       72         32 sde70
+ 259       73      20480 sde71
+ 259       74        128 sde72
+ 259       75        128 sde73
+ 259       76      32768 sde74
+ 259       77         64 sde75
+ 259       78      21172 sde76
+   8       80      32768 sdf
+   8       81        104 sdf1
+   8       82        896 sdf2
+   8       83       8192 sdf3
+   8       84       8192 sdf4
+   8       85       8192 sdf5
+   8       86       1024 sdf6
+ 254        0    2487264 dm-0
+ 254        1    1005380 dm-1
+ 254        2     589956 dm-2
+ 254        3        340 dm-3
+ 254        4    1019272 dm-4
+ 254        5     610552 dm-5
+ 254        6      32492 dm-6
+   7      128       4368 loop16
+   7      136       5724 loop17
+   7      144      14828 loop18
+   7      152      18788 loop19
+   7      160      22500 loop20
+   7      168       5988 loop21
+   7      176      28124 loop22
+   7      184       3372 loop23
+   7      192       1388 loop24
+   7      200       6472 loop25
+   7      208       4800 loop26
+   7      216      25028 loop27
+   7      224       6796 loop28
+   7      232        824 loop29
+   7      240      22636 loop30
+   7      248       5044 loop31
+   7      256      25568 loop32
+   7      264      10116 loop33
+   7      272      29464 loop34
+   7      280       5688 loop35
+   7      288        264 loop36
+   7      296        268 loop37
+   7      304      17232 loop38
+   7      312       8504 loop39
+   7      320        668 loop40
+   7      328       5672 loop41
+   7      336      37916 loop42
+ 254        7      27892 dm-7
+ 254        8      29784 dm-8
+ 254       10      29104 dm-10
+ 254       11        252 dm-11
+ 254       12        360 dm-12
+ 254       14       2388 dm-14
+ 254       15       8120 dm-15
+ 254       16       3992 dm-16
+ 254       17      34320 dm-17
+ 254       19       4320 dm-19
+ 254       20       5664 dm-20
+ 254       21      18628 dm-21
+ 254       22      14700 dm-22
+ 254       23       5900 dm-23
+ 254       24      22312 dm-24
+ 254       28       6408 dm-28
+ 254       29      24820 dm-29
+ 254       30       4748 dm-30
+ 254       31       6728 dm-31
+ 254       32        804 dm-32
+ 254       33      22448 dm-33
+ 254       34       4992 dm-34
+ 254       35      10024 dm-35
+ 254       36      25356 dm-36
+ 254       37      29220 dm-37
+ 254       39       5632 dm-39
+ 254       40        256 dm-40
+ 254       43       5616 dm-43
+ 253        0    4194304 zram0
+ 254       46  380022520 dm-46
+  31        0      16384 mtdblock0
+
+===== 槽位/super 信息 =====
+lrwxrwxrwx 1 root root 16 1970-01-02 23:29 /dev/block/by-name/super -> /dev/block/sda31
+lrwxrwxrwx 1 root root 16 1970-01-02 23:29 /dev/block/by-name/userdata -> /dev/block/sda32
+[命令失败]
+
+===== df =====
+Filesystem        Size Used Avail Use% Mounted on
+/dev/block/dm-46  362G 2.2G  360G   1% /data
+tmpfs             5.4G    0  5.4G   0% /data_mirror
+
+===== mount (data) =====
+/dev/block/dm-46 on /data type f2fs (rw,lazytime,seclabel,nosuid,nodev,noatime,background_gc=on,gc_merge,discard,no_heap,user_xattr,inline_xattr,acl,inline_data,inline_dentry,flush_merge,extent_cache,mode=adaptive,active_logs=6,reserve_root=32768,reserve_node=0,resuid=0,resgid=1065,inlinecrypt,alloc_mode=default,checkpoint_merge,fsync_mode=nobarrier,discard_unit=block,memory=normal,lookup_mode=perf)
+/dev/fuse on /storage/emulated type fuse (rw,lazytime,nosuid,nodev,noexec,noatime,user_id=0,group_id=0,allow_other)
+
+===== userland 工具 =====
+chroot     /system/bin/chroot
+unshare    /system/bin/unshare
+mount      /system/bin/mount
+nsenter    /system/bin/nsenter
+proot      -
+busybox    -
+toybox     /system/bin/toybox
+curl       /system/bin/curl
+wget       -
+tar        /system/bin/tar
+---
+
+===== termux/容器痕迹 =====
+(空=无)
+
+===== 完成 =====

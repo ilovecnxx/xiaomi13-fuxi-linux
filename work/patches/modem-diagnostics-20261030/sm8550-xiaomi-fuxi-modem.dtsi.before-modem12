@@ -1,0 +1,24 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Xiaomi 13 (fuxi)：基带变体。在 sm8550-xiaomi-fuxi-min.dts 的基础上打开 IPA 与 MPSS（基带 Q6）。
+ * 固件取自手机自己的 modem 分区 image/（只读复制），放 /lib/firmware/qcom/sm8550/xiaomi/fuxi/。
+ *
+ * 两者都在根文件系统挂好后才启动（initramfs 里没有固件）：
+ *   - IPA 在 initramfs 阶段 probe 失败（找不到 ipa_fws），由 fuxi-firmware-devices 再 bind 一次；
+ *   - MPSS 由 rmtfs（-s，文件模式，只写 EFS 副本）在自己就绪后启动，fuxi-firmware-devices 不碰它。
+ * 保留内存（mpss/q6_mpss_dtb/mpss_dsm/ipa_fw/ipa_gsi/rmtfs）与运行中 DTB 一致，沿用 sm8550.dtsi。
+ *
+ * 构建：FUXI_DTB=sm8550-xiaomi-fuxi-modem scripts/fuxi-build-abl.sh <名字>
+ */
+
+
+&ipa {
+	firmware-name = "qcom/sm8550/xiaomi/fuxi/ipa_fws.mdt";
+	status = "okay";
+};
+
+&remoteproc_mpss {
+	firmware-name = "qcom/sm8550/xiaomi/fuxi/modem.mdt",
+			"qcom/sm8550/xiaomi/fuxi/modem_dtb.mdt";
+	status = "okay";
+};

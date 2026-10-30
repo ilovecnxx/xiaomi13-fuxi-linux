@@ -1,0 +1,19 @@
+#!/bin/bash
+# Wait for the actual SSC QRTR service, not just the hexagonrpcd process.
+set -uo pipefail
+seconds=${1:-40}
+if [[ ! "$seconds" =~ ^[0-9]+$ ]] || (( seconds < 1 || seconds > 120 )); then
+  echo 'Usage: fuxi-wait-ssc [1..120 seconds]' >&2
+  exit 2
+fi
+command -v qrtr-lookup >/dev/null || { echo 'qrtr-lookup is required' >&2; exit 1; }
+deadline=$((SECONDS + seconds))
+while (( SECONDS < deadline )); do
+  if timeout 2 qrtr-lookup 400 2>/dev/null | awk '$1 == 400 { found = 1 } END { exit !found }'; then
+    echo 'SSC QRTR service 400 ready'
+    exit 0
+  fi
+  sleep 1
+done
+echo "SSC QRTR service 400 unavailable after ${seconds}s" >&2
+exit 1

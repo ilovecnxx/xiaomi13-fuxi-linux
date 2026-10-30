@@ -1,0 +1,13 @@
+[Unit]
+Description=fuxi USB network (g_cdc ECM usb0, 10.42.0.2 via host 10.42.0.1)
+After=local-fs.target
+Before=network.target
+Wants=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/fuxi-usbnet
+
+[Install]
+WantedBy=multi-user.target

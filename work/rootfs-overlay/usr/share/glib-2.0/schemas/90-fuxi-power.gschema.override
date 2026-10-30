@@ -1,0 +1,5 @@
+# fuxi：s2idle 下 WiFi 不能唤醒，空闲自动挂起会让手机失联（2026-10-29 23:41）。
+# 唤醒源验证通过前关闭空闲挂起；熄屏和 cpuidle 不受影响。部署后需 glib-compile-schemas /usr/share/glib-2.0/schemas。
+[org.gnome.settings-daemon.plugins.power]
+sleep-inactive-ac-type='nothing'
+sleep-inactive-battery-type='nothing'

@@ -1,0 +1,34 @@
+--- ../../work/patches/battmgr-sign-20261029/qcom_battmgr.c.orig	2026-10-27 07:12:17.368531071 +0800
++++ drivers/power/supply/qcom_battmgr.c	2026-10-29 22:38:31.209551360 +0800
+@@ -39,6 +39,8 @@
+ #define NOTIF_BAT_STATUS		0x80
+ #define NOTIF_BAT_INFO			0x81
+ #define NOTIF_BAT_CHARGING_STATE	0x83
++/* Xiaomi SM8550 firmware, a few times at boot; meaning unknown */
++#define NOTIF_XM_UNKNOWN		0x50
+ 
+ #define BATTMGR_BAT_INFO		0x9
+ 
+@@ -1241,6 +1243,12 @@
+ 	case NOTIF_WLS_PROPERTY:
+ 		power_supply_changed(battmgr->wls_psy);
+ 		break;
++	case NOTIF_XM_UNKNOWN:
++		if (battmgr->shifted_props) {
++			dev_dbg(battmgr->dev, "ignoring notification %#x\n", notification);
++			break;
++		}
++		fallthrough;
+ 	default:
+ 		dev_err(battmgr->dev, "unknown notification: %#x\n", notification);
+ 		break;
+@@ -1459,6 +1467,9 @@
+ 			break;
+ 		case BATT_CURR_NOW:
+ 			battmgr->status.current_now = le32_to_cpu(resp->intval.value);
++			/* Xiaomi firmware reports discharge as positive; the ABI wants negative */
++			if (battmgr->shifted_props)
++				battmgr->status.current_now = -(int)battmgr->status.current_now;
+ 			break;
+ 		case BATT_TEMP:
+ 			val = le32_to_cpu(resp->intval.value);

@@ -1,0 +1,29 @@
+# 状态：暂缓。让 SM8550（UFS HW v5）在 300MHz 调频时跑 HS-G5。
+# 2026-10-27 03:14 实测：负载下 HS_GEAR5/RATE_A/2 lane，读测无错误；但在 G5 状态下 reboot -f 后手机进了 EDL（05c6:9008），约 85 秒后自行退出。
+# G4 下同样的重启流程 >10 次都正常。重新启用前先查 ufshcd 关机流程（重启前降档/保持 VCC？）。
+diff --git a/drivers/ufs/host/ufs-qcom.c b/drivers/ufs/host/ufs-qcom.c
+index 954be9343..c2cbe82d2 100644
+--- a/drivers/ufs/host/ufs-qcom.c
++++ b/drivers/ufs/host/ufs-qcom.c
+@@ -2497,6 +2497,7 @@ static unsigned long ufs_qcom_opp_freq_to_clk_freq(struct ufs_hba *hba,
+ 
+ static u32 ufs_qcom_freq_to_gear_speed(struct ufs_hba *hba, unsigned long freq)
+ {
++	struct ufs_qcom_host *host = ufshcd_get_variant(hba);
+ 	u32 gear = UFS_HS_DONT_CHANGE;
+ 	unsigned long unipro_freq;
+ 
+@@ -2509,7 +2510,12 @@ static u32 ufs_qcom_freq_to_gear_speed(struct ufs_hba *hba, unsigned long freq)
+ 		gear = UFS_HS_G5;
+ 		break;
+ 	case 300000000:
+-		gear = UFS_HS_G4;
++		/*
++		 * HW ver 5 (SM8550) runs HS-G5 Rate-A with the UniPro clock at
++		 * 300 MHz; its GCC has no 403 MHz rate. Mapping 300 MHz to G4
++		 * would cap the link at G4 whenever clock scaling scales up.
++		 */
++		gear = host->hw_ver.major == 0x5 ? UFS_HS_G5 : UFS_HS_G4;
+ 		break;
+ 	case 201500000:
+ 		gear = UFS_HS_G3;

@@ -1,0 +1,61 @@
+# ============================================================
+# 本地 git 仓库忽略规则：只跟踪源码/文档/脚本/补丁/状态
+# 大件产物、设备备份、私钥、第三方源码一律不进版本库
+# ============================================================
+
+# ---- 顶层大目录 ----
+/build/
+/backups/
+/archive/
+/.venv/
+/logs/
+
+# ---- work/ 采用白名单：只跟踪下面几个子目录 ----
+/work/*
+!/work/patches/
+!/work/state/
+!/work/deploy/
+!/work/rootfs-overlay/
+!/work/device-info/
+!/work/chromium-mobile/
+
+# ---- 白名单目录内仍排除：产物/二进制/密钥 ----
+*.img
+*.ext4
+*.qcow2
+*.iso
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+*.deb
+*.AppImage
+*.bin
+*.elf
+*.fw
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+known_hosts
+.secret*
+*.token
+*.log
+__pycache__/
+*.pyc
+
+# ---- 设备密钥 / 存档（绝不入库）----
+/work/ssh/
+/work/backup/
+/work/efs-copy/
+/work/firmware*/
+/work/transfer/
+
+# ---- 第三方源码与工具二进制 ----
+/research/src-mm/
+/tools/platform-tools/
+/tools/stub-lib/
+/tools/stub-include/
+
+# ---- 其它 ----
+.checkpatch-camelcase.date.0

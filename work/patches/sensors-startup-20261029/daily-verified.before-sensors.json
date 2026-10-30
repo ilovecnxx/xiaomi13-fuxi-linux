@@ -1,0 +1,25 @@
+{
+  "verified_date": "2026-10-29",
+  "timezone": "Asia/Shanghai",
+  "image": "work/kbuild/abl-fuxi-daily-pm1.img",
+  "image_sha256": "3b02fd600d16c41af37503495962046f8733eb014f297a3ac7e0de88c0bbced8",
+  "kernel": "7.3.0+ #168",
+  "device_final_state": "Linux, systemd running, Phosh active",
+  "read_only_health_failures": 0,
+  "cpufreq_policies": 3,
+  "thermal_zones": 43,
+  "cpu_cooling_devices": 3,
+  "android_roundtrip_seconds": 37,
+  "linux_ssh_return_seconds": 20,
+  "recovery_backup": "work/backup/daily-pm-20261029/recovery_b-before.img",
+  "verification_log": "work/claude-logs/roundtrip-daily-pm1-20261029.log",
+  "report": "docs/进展-20261029.md",
+  "remaining_issues": [
+    "ADSP sensor registry crashes once during boot and recovers",
+    "Phosh restarted during startup (two times on first boot, once on second)",
+    "Two-worker short load stopped at the test limit of 80 C; sustained thermal validation incomplete",
+    "WiFi association, internet and WiFi SSH not verified",
+    "Deep idle, suspend, battery life and physical charging not verified",
+    "Native display/GPU, audio, cameras, modem and sensors remain experimental"
+  ]
+}

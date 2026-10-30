@@ -1,0 +1,6 @@
+#!/bin/sh
+# EDK2 BaseTools 老代码在 GCC15 默认 C23 下会报错（() 被当成 (void)），
+# SimpleInit host 工具又需要 C99+，因此统一用 gnu11。
+BASE="/home/user/文档/deepseek-harness/default-workspace/linux-android/tools"
+exec /usr/bin/gcc -std=gnu11 -I"$BASE/stub-include" -L"$BASE/stub-lib" \
+  -Wno-error=implicit-function-declaration -Wno-error=incompatible-pointer-types "$@"

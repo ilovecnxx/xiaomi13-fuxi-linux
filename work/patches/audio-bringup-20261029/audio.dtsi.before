@@ -1,0 +1,212 @@
+// SPDX-License-Identifier: BSD-3-Clause
+/*
+ * Xiaomi 13 (fuxi)：音频变体（第一步：两个扬声器）。在 sm8550-xiaomi-fuxi-min.dts 的基础上加：
+ *   - 2× Cirrus CS35L41 功放，I2C8（QUP2 SE0，0x880000）：@40 "B" 下扬声器（右声道）、@42 "T" 上扬声器
+ *     （左声道；兼作听筒，GPIO68 切换，暂不用）。复位 GPIO183/182，中断 GPIO99/98（低电平）。
+ *   - 接口：TLMM I2S1（GPIO121 SCK、123 WS、124 DATA1 → 功放、122 DATA0 ← 功放回采），
+ *     对应 AudioReach 的 SECONDARY_MI2S（厂商声卡 qcom,sec-mi2s-gpios = sec_tdm_pinctrl = 这四个脚）。
+ *     LPASS 做主（BCLK/WS 输出），功放的 PLL 跟 BCLK。
+ *   - 声卡 "xiaomi,fuxi-sndcard"（sound/soc/qcom/sc8280xp.c，driver_name "sm8550"），
+ *     拓扑 qcom/sm8550/Xiaomi-13-tplg.bin（由 SM8550-QRD 拓扑的 Primary MI2S 通路改成 Secondary，
+ *     见 scripts/fuxi-audio-tplg.sh）。
+ * 参数取自厂商 DTB（work/device-info/fuxi-live.dts 的 i2c@880000、sec_tdm_pinctrl、cirrus_* 引脚）。
+ *
+ * 构建：FUXI_DTB=sm8550-xiaomi-fuxi-audio scripts/fuxi-build-abl.sh <名字>
+ */
+
+
+/ {
+	/*
+	 * 上扬声器兼听筒：厂商在 T 功放上挂了 rcv_gpio_high/low（GPIO68），通话听筒模式拉高。
+	 * 用 simple-audio-mux 把 GPIO68 暴露成 ALSA 控件 "RCV MUX"（Speaker/Earpiece），由 UCM 切换。
+	 */
+	rcv_switch: audio-mux-rcv {
+		compatible = "simple-audio-mux";
+		mux-gpios = <&tlmm 68 GPIO_ACTIVE_HIGH>;
+		state-labels = "Speaker", "Earpiece";
+		sound-name-prefix = "RCV";
+		pinctrl-0 = <&rcv_switch_default>;
+		pinctrl-names = "default";
+	};
+
+	sound: sound {
+		compatible = "xiaomi,fuxi-sndcard";
+		model = "Xiaomi-13";
+		pinctrl-0 = <&i2s1_default>;
+		pinctrl-names = "default";
+		aux-devs = <&rcv_switch>;
+
+		speaker-dai-link {
+			link-name = "Secondary MI2S Playback";
+
+			codec {
+				sound-dai = <&spk_amp_t>, <&spk_amp_b>;
+			};
+
+			cpu {
+				sound-dai = <&q6apmbedai SECONDARY_MI2S_RX>;
+			};
+
+			platform {
+				sound-dai = <&q6apm>;
+			};
+		};
+	};
+};
+
+&gpi_dma2 {
+	status = "okay";
+};
+
+&i2c8 {
+	clock-frequency = <400000>;
+	/*
+	 * fuxi 的 QUP2 SE0 走 GPIO0/1（"mirb" 那组），不是 sm8550.dtsi 默认的 GPIO56/57（mira）；
+	 * GPIO57 在本机是长焦相机的 AVDD 开关（厂商 camera_tele_avdd_ldo）。厂商 qupv3_se8_i2c_*_active。
+	 */
+	pinctrl-0 = <&qup_i2c8_mirb_data_clk>;
+	pinctrl-names = "default";
+	status = "okay";
+
+	spk_amp_b: speaker-amp@40 {
+		compatible = "cirrus,cs35l41";
+		reg = <0x40>;
+		interrupts-extended = <&tlmm 99 IRQ_TYPE_LEVEL_LOW>;
+		reset-gpios = <&tlmm 183 GPIO_ACTIVE_HIGH>;	/* 驱动置 1 = 解除复位 */
+		pinctrl-0 = <&spk_amp_b_default>;
+		pinctrl-names = "default";
+		sound-name-prefix = "B";
+		/* DSP 固件名 cirrus/cs35l41-dsp1-spk-prot-xiaomi-fuxi-B.{wmfw,bin}（打开 "B DSP1 Preload Switch" 才加载） */
+		cirrus,subsystem-id = "xiaomi-fuxi";
+		#sound-dai-cells = <0>;
+
+		cirrus,boost-peak-milliamp = <4000>;
+		cirrus,boost-ind-nanohenry = <1000>;
+		cirrus,boost-cap-microfarad = <15>;
+		cirrus,asp-sdout-hiz = <3>;
+		cirrus,right-channel-amp;
+		cirrus,gpio2-src-select = <4>;
+		cirrus,gpio2-output-enable;
+	};
+
+	spk_amp_t: speaker-amp@42 {
+		compatible = "cirrus,cs35l41";
+		reg = <0x42>;
+		interrupts-extended = <&tlmm 98 IRQ_TYPE_LEVEL_LOW>;
+		reset-gpios = <&tlmm 182 GPIO_ACTIVE_HIGH>;	/* 驱动置 1 = 解除复位 */
+		pinctrl-0 = <&spk_amp_t_default>;
+		pinctrl-names = "default";
+		sound-name-prefix = "T";
+		cirrus,subsystem-id = "xiaomi-fuxi";
+		#sound-dai-cells = <0>;
+
+		cirrus,boost-peak-milliamp = <4000>;
+		cirrus,boost-ind-nanohenry = <1000>;
+		cirrus,boost-cap-microfarad = <15>;
+		cirrus,asp-sdout-hiz = <3>;
+		cirrus,gpio2-src-select = <4>;
+		cirrus,gpio2-output-enable;
+	};
+};
+
+&q6apmbedai {
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	dai@18 {
+		reg = <SECONDARY_MI2S_RX>;
+		clocks = <&q6prmcc LPASS_CLK_ID_SEC_MI2S_IBIT LPASS_CLK_ATTRIBUTE_COUPLE_NO>;
+		clock-names = "bclk";
+	};
+};
+
+&tlmm {
+	qup_i2c8_mirb_data_clk: qup-i2c8-mirb-data-clk-state {
+		sda-pins {
+			pins = "gpio0";
+			function = "qup2_se0_l0_mirb";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+
+		scl-pins {
+			pins = "gpio1";
+			function = "qup2_se0_l1_mirb";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+
+	/* 厂商 tdm1_*_active：i2s1_* 功能、8 mA、无上下拉 */
+	i2s1_default: i2s1-default-state {
+		sck-pins {
+			pins = "gpio121";
+			function = "i2s1_sck";
+			drive-strength = <8>;
+			bias-disable;
+		};
+
+		data0-pins {
+			pins = "gpio122";
+			function = "i2s1_data0";
+			drive-strength = <8>;
+			bias-disable;
+		};
+
+		ws-pins {
+			pins = "gpio123";
+			function = "i2s1_ws";
+			drive-strength = <8>;
+			bias-disable;
+		};
+
+		data1-pins {
+			pins = "gpio124";
+			function = "i2s1_data1";
+			drive-strength = <8>;
+			bias-disable;
+		};
+	};
+
+	/* 厂商 rcv_gpio_low（默认扬声器模式） */
+	rcv_switch_default: rcv-switch-default-state {
+		pins = "gpio68";
+		function = "gpio";
+		drive-strength = <2>;
+		bias-disable;
+		output-low;
+	};
+
+	/* 厂商 cirrus_reset_default_0 / cirrus_irq_default_0 */
+	spk_amp_b_default: spk-amp-b-default-state {
+		reset-pins {
+			pins = "gpio183";
+			function = "gpio";
+			drive-strength = <16>;
+			bias-disable;
+		};
+
+		irq-pins {
+			pins = "gpio99";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+
+	spk_amp_t_default: spk-amp-t-default-state {
+		reset-pins {
+			pins = "gpio182";
+			function = "gpio";
+			drive-strength = <16>;
+			bias-disable;
+		};
+
+		irq-pins {
+			pins = "gpio98";
+			function = "gpio";
+			drive-strength = <2>;
+			bias-pull-up;
+		};
+	};
+};

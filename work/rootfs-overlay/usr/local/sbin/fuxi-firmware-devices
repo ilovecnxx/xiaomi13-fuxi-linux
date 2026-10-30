@@ -1,0 +1,53 @@
+#!/bin/sh
+# fuxi（Xiaomi 13）主线内核：根文件系统挂好后，补启动那些在 initramfs 阶段因找不到固件而失败的设备。
+#   - remoteproc（ADSP 等）：offline 的 echo start。基带（MPSS，4080000.remoteproc）除外：
+#     它必须等 rmtfs 就绪，由 rmtfs -s 负责启动。
+#   - IPA（基带数据通道，3f40000.ipa）：initramfs 阶段 probe 失败（找不到 ipa_fws）后未绑定，bind 一次。
+#     要在基带启动前完成，所以本服务排在 rmtfs 之前。
+#   - WCN7850 WiFi（PCI 17cb:1107，ath12k）：probe 失败后处于未绑定状态，bind 一次即可。
+#     不要 unbind/rebind 半初始化的 ath12k（2026-10-27 实测会把整机卡死）。
+#   - WCN7850 蓝牙（uart14 上的 serdev，hci_uart_qca）：固件在 hci0 上电时才加载；没绑定时 bind 一次。
+log() { echo "fuxi-firmware-devices: $*"; }
+
+for r in /sys/class/remoteproc/remoteproc*; do
+	[ -e "$r/state" ] || continue
+	case "$(readlink -f "$r")" in */4080000.remoteproc/*) continue ;; esac
+	if [ "$(cat "$r/state")" = offline ]; then
+		log "start $(cat "$r/name")"
+		echo start > "$r/state" || log "start $(cat "$r/name") failed"
+	fi
+done
+
+ipa=/sys/bus/platform/devices/3f40000.ipa
+if [ -e "$ipa" ] && [ ! -e "$ipa/driver" ] && ls /lib/firmware/qcom/sm8550/xiaomi/fuxi/ipa_fws.* >/dev/null 2>&1; then
+	log "bind 3f40000.ipa"
+	echo 3f40000.ipa > /sys/bus/platform/drivers/ipa/bind || log "bind 3f40000.ipa failed"
+fi
+
+# 调试：/etc/fuxi/ath12k-debug_mask 存在时，bind 前设 ath12k 的 debug_mask（需要 CONFIG_ATH12K_DEBUG），
+# 例如 0x60 = BOOT|QMI，看固件握手停在哪一步
+if [ -r /etc/fuxi/ath12k-debug_mask ] && [ -w /sys/module/ath12k/parameters/debug_mask ]; then
+	m=$(cat /etc/fuxi/ath12k-debug_mask)
+	log "ath12k debug_mask=$m"
+	echo "$m" > /sys/module/ath12k/parameters/debug_mask || log "set debug_mask failed"
+fi
+
+for d in /sys/bus/pci/devices/*; do
+	[ "$(cat "$d/vendor" 2>/dev/null):$(cat "$d/device" 2>/dev/null)" = "0x17cb:0x1107" ] || continue
+	[ -e "$d/driver" ] && continue
+	drv=/sys/bus/pci/drivers/ath12k_wifi7_pci
+	[ -d "$drv" ] || drv=/sys/bus/pci/drivers/ath12k_pci
+	if [ -f /lib/firmware/ath12k/WCN7850/hw2.0/amss.bin ] && [ -d "$drv" ]; then
+		log "bind $(basename "$d") to $(basename "$drv")"
+		echo "$(basename "$d")" > "$drv/bind" || log "bind $(basename "$d") failed"
+	fi
+done
+
+for d in /sys/bus/serial/devices/*; do
+	[ -e "$d" ] || continue
+	grep -q 'wcn7850-bt' "$d/of_node/compatible" 2>/dev/null || continue
+	[ -e "$d/driver" ] && continue
+	log "bind $(basename "$d") to hci_uart_qca"
+	echo "$(basename "$d")" > /sys/bus/serial/drivers/hci_uart_qca/bind || log "bind $(basename "$d") failed"
+done
+exit 0

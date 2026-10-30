@@ -1,0 +1,25 @@
+#!/bin/sh
+# fuxi：WCN7850 蓝牙控制器没有出厂地址（主线 DTB 里的 local-bd-address 本该由引导程序填，我们用内建 DTB 没人填），
+# hci0 处于 "Unconfigured"，蓝牙开不起来。用 Android 里读到的本机蓝牙地址（/etc/fuxi/bt-address）配置一次。
+# 注意时序：QCA 固件下载期间 hci0 会短暂以普通控制器出现（地址是占位的 00:00:00:00:5A:AD），
+# 下载完才变成 Unconfigured，所以要等到确定的状态再动手；固件下载由 bluetoothd 打开 hci0 触发。
+a=$(cat /etc/fuxi/bt-address 2>/dev/null)
+[ -n "$a" ] || { echo "fuxi-bt-address: 没有 /etc/fuxi/bt-address"; exit 0; }
+for i in $(seq 120); do
+	info=$(btmgmt info 2>/dev/null)
+	# 未配置的控制器不在 "btmgmt info" 的列表里，要看 config 的 missing options
+	if timeout 5 btmgmt --index hci0 config 2>/dev/null | grep -q "missing options: public-address"; then
+		echo "fuxi-bt-address: hci0 public-addr 已设置"
+		btmgmt -i hci0 public-addr "$a" >/dev/null
+		# bluetoothd 若已启动，它记着旧的未配置索引，需要重启才能开电
+		systemctl is-active -q bluetooth && systemctl restart bluetooth
+		exit 0
+	fi
+	if echo "$info" | grep -A1 "^hci0:" | grep -q "addr " && ! echo "$info" | grep -q "addr 00:00:00:00:"; then
+		echo "fuxi-bt-address: hci0 已有地址"
+		exit 0
+	fi
+	sleep 1
+done
+echo "fuxi-bt-address: 120 秒内 hci0 没到确定状态"
+exit 1

@@ -1,0 +1,12 @@
+[Unit]
+Description=fuxi: start devices whose firmware lives in the root filesystem (ADSP, IPA, WiFi, Bluetooth)
+After=local-fs.target
+Before=NetworkManager.service bluetooth.service rmtfs.service ModemManager.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/fuxi-firmware-devices
+
+[Install]
+WantedBy=multi-user.target

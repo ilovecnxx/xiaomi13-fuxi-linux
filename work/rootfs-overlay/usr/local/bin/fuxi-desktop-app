@@ -1,0 +1,20 @@
+#!/bin/sh
+# Current simpledrm image has no GPU render node. GTK4's accelerated renderer
+# exits with SIGILL here; use the verified software path until a GPU is present.
+set -eu
+app=${1:-}
+case "$app" in
+  epiphany|gnome-text-editor|phosh-mobile-settings|gnome-control-center) shift ;;
+  *) echo 'Usage: fuxi-desktop-app {epiphany|gnome-text-editor|phosh-mobile-settings|gnome-control-center} [arguments...]' >&2; exit 2 ;;
+esac
+has_gpu=0
+for node in /dev/dri/renderD*; do
+  if [ -c "$node" ]; then has_gpu=1; break; fi
+done
+if [ "$has_gpu" = 0 ]; then
+  export GSK_RENDERER=cairo
+  if [ "$app" = epiphany ]; then
+    export WEBKIT_DISABLE_COMPOSITING_MODE=1
+  fi
+fi
+exec "/usr/bin/$app" "$@"

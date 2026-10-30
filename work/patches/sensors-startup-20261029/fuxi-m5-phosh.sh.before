@@ -1,0 +1,51 @@
+#!/bin/bash
+# M5.3：在 sda33 的 Ubuntu 上装 Phosh（手机界面），开机自动进入。手机须已在 Ubuntu 且能上网（USB 共享或 WiFi）。
+#   - 普通用户 fuxi（uid 1000）；sudo/PIN 密码必须由调用者传入（脚本不内置默认值）
+#   - 主镜像没有 GPU 驱动：phoc 用 CPU 软件渲染（WLR_RENDERER=pixman），输出到 simpledrm；
+#     full/desk/disp 镜像有 msm DRM + Adreno 时自动改用 GPU（重跑本脚本即可切换）
+#   - 屏幕 1080x2400，缩放 2.5
+# 用法: scripts/fuxi-m5-phosh.sh <PIN>（必填，建议先用随机密码，登录后再改）
+set -u
+B="$(cd "$(dirname "$0")/.." && pwd)"
+PIN="${1:-}"
+[ -n "$PIN" ] || { echo "用法: scripts/fuxi-m5-phosh.sh <PIN>（必填）" >&2; exit 2; }
+LOG="$B/work/claude-logs/m5-phosh-$(date +%Y%m%d-%H%M%S).log"
+exec > >(tee -a "$LOG") 2>&1
+ssh_() { timeout "${T:-120}" "$B/scripts/fuxi-ssh.sh" "$@"; }
+say() { echo "$(date +%T) $*"; }
+
+say "== 装软件包"
+T=3600 ssh_ 'export DEBIAN_FRONTEND=noninteractive; apt-get update -q 2>&1 | tail -n 1
+apt-get install -y phosh phoc squeekboard gnome-console nautilus gnome-control-center \
+  phosh-mobile-settings fonts-noto-cjk locales network-manager-gnome \
+  pipewire-audio wireplumber alsa-ucm-conf alsa-utils \
+  kbd dbus-user-session gnome-session-common 2>&1 | tail -n 3
+apt-get install -y --no-install-recommends mesa-utils 2>&1 | tail -n 1'
+
+say "== 用户与配置"
+ssh_ "set -e
+id fuxi >/dev/null 2>&1 || useradd -m -u 1000 -s /bin/bash -G video,render,input,audio,netdev,plugdev,sudo fuxi
+echo 'fuxi:$PIN' | chpasswd
+mkdir -p /etc/phosh /home/fuxi/.config
+chown -R fuxi:fuxi /home/fuxi/.config
+loginctl enable-linger fuxi
+# 10-28 关键修复：rootfs 制作时 setuid 位丢了，非 root 的 pam_unix（锁屏认证走 unix_chkpwd）读不到
+# /etc/shadow → 正确密码也报“密码错误”。恢复标准 setuid root 二进制。
+chmod 4755 /sbin/unix_chkpwd /usr/bin/passwd /usr/bin/su /usr/bin/chsh /usr/bin/chfn \
+  /usr/bin/newgrp /usr/bin/gpasswd /usr/bin/mount /usr/bin/umount 2>/dev/null || true
+# phoc：软件渲染 + 缩放
+printf '%s\n' '[output:DSI-1]' 'scale = 2.5' '[output:Unknown-1]' 'scale = 2.5' > /etc/phosh/phoc.ini
+mkdir -p /etc/systemd/system/phosh.service.d
+# 有 Adreno（msm 驱动 + renderD128，full/desk/disp 镜像）就用 GPU 渲染，否则 pixman 软件渲染（simpledrm）
+if readlink /sys/class/drm/renderD128/device/driver 2>/dev/null | grep -q msm; then R=; else R='Environment=WLR_RENDERER=pixman'; fi
+printf '%s\n' '[Service]' \$R 'Environment=WLR_NO_HARDWARE_CURSORS=1' 'Environment=LANG=zh_CN.UTF-8' > /etc/systemd/system/phosh.service.d/10-fuxi.conf
+locale-gen zh_CN.UTF-8 en_US.UTF-8 >/dev/null 2>&1 || true
+systemctl daemon-reload
+systemctl disable getty@tty1.service 2>/dev/null || true
+systemctl enable phosh.service
+echo 'fuxi-mainline 第十二次（M5.3）: apt 装 phosh 等；用户 fuxi（uid 1000）；/etc/phosh/phoc.ini 缩放 2.5；phosh.service.d/10-fuxi.conf（pixman 软件渲染）；关 getty@tty1' >> /root/fuxi-mainline-backup/CHANGES.txt
+echo config-ok"
+
+say "== 启动 Phosh"
+ssh_ 'systemctl restart phosh.service; sleep 15; systemctl is-active phosh.service; journalctl -u phosh -b --no-pager -o cat | tail -n 15'
+say "完成，日志 $LOG"

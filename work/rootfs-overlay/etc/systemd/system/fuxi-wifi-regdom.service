@@ -1,0 +1,20 @@
+[Unit]
+Description=fuxi: set the WiFi regulatory domain (default world "00" limits 5 GHz)
+After=fuxi-firmware-devices.service
+Before=NetworkManager.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# 国家码：/etc/fuxi/wifi-country（没有就用 CN）
+# cfg80211 在 initramfs 阶段读不到 regulatory.db，会把失败缓存成 -ENODATA，之后的 `iw reg set` 静默失效，
+# 必须先 `iw reg reload`。ath12k 是 self-managed 网卡，只在 phy 已注册时才会把用户国家码下发给固件
+# （内核需 CONFIG_ATH_REG_DYNAMIC_USER_REG_HINTS），所以先等 phy 出现，最后核对网卡实际生效的国家码。
+ExecStart=/bin/sh -c 'c=$(cat /etc/fuxi/wifi-country 2>/dev/null || echo CN); \
+  for i in $(seq 1 30); do ls /sys/class/ieee80211/ 2>/dev/null | grep -q phy && break; sleep 1; done; \
+  iw reg reload; sleep 1; iw reg set "$c"; \
+  for i in $(seq 1 10); do iw reg get | grep -A1 "^phy" | grep -q "country $c" && { echo "regdom $c"; exit 0; }; sleep 1; done; \
+  echo "regdom $c not applied to phy: $(iw reg get | grep -A1 "^phy" | tail -n 1)"; exit 1'
+
+[Install]
+WantedBy=multi-user.target

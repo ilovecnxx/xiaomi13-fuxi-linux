@@ -1,0 +1,59 @@
+#!/bin/busybox sh
+/bin/busybox --install -s /bin
+mkdir -p /proc /sys /dev /tmp
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+mkdir -p /dev/pts
+mount -t devpts devpts /dev/pts 2>/dev/null
+mount -t debugfs debugfs /sys/kernel/debug 2>/dev/null
+echo "FUXI_INIT_RUNNING" > /dev/kmsg
+
+# 安全网：180 秒后自动 reboot -f 回 Android（boot_b 是 stock）。
+# 主机经串口执行 `touch /tmp/keep` 可取消。
+( sleep 180
+  [ -e /tmp/keep ] || { echo "FUXI_SAFETY_REBOOT" > /dev/kmsg; sleep 1; reboot -f; } ) &
+
+# USB 依赖链要等 late_initcall 的 deferred probe，给足时间
+n=0
+while [ ! -e /dev/ttyGS0 ] && [ "$n" -lt 30 ]; do
+  sleep 1
+  n=$((n + 1))
+done
+
+if [ -e /dev/ttyGS0 ]; then
+  echo "FUXI_USB_SERIAL_READY after ${n}s" > /dev/kmsg
+  # PID 1 不能退出：串口 shell 结束后重新拉起
+  while true; do
+    setsid -c /bin/sh -i </dev/ttyGS0 >/dev/ttyGS0 2>&1 ||
+      setsid /bin/sh -i </dev/ttyGS0 >/dev/ttyGS0 2>&1
+    sleep 1
+  done
+fi
+
+# USB 没起来：生成一屏报告（屏幕约 41 行 × 45 字，超过 45 字会吞字，先按 44 折行）
+D=/sys/kernel/debug/devices_deferred
+R=/tmp/report
+{
+  echo "NO_USB UDC:[$(ls /sys/class/udc 2>/dev/null)]"
+  echo "RPMHREG:[$(ls /sys/bus/platform/drivers/qcom-rpmh-regulator 2>/dev/null | grep -o 'regulators-[0-9]*' | sed 's/regulators-//' | tr '\n' ' ')] FIXED:[$(ls /sys/bus/platform/drivers/reg-fixed-voltage 2>/dev/null | grep -c regulator)]"
+  if [ -r "$D" ]; then
+    echo "DEFER $(wc -l < "$D"):"
+    # 一项一行：去掉公共前缀，"platform: wait for supplier" 缩写为 "->"
+    sed -e 's#/soc@0/rsc@17a00000/##g' -e 's#17a00000\.rsc:##g' -e 's#/soc@0/##g' \
+        -e 's#platform: wait for supplier#->#' -e 's#platform: supplier \([^ ]*\) not ready#=> \1#' -e 's#\t# #' -e 's#  *# #g' "$D" | cut -c1-44 | head -n 24
+  else
+    echo "DEFER list unavailable"
+  fi
+  echo "ERR:"
+  dmesg | sed 's/^\[[^]]*\] *//' | grep -v -e '^calling' -e '^initcall' -e '^fuxi' -e '^IC ' -e '^PRB ' |
+    grep -iE 'fail|error|unable|timed out|timeout|invalid|could not|not found' | grep -v 'pmic_arb\|pmic-spmi' | tail -n 8
+} > "$R" 2>&1
+fold -w 44 "$R" | tail -n 38 | while IFS= read -r l; do echo "$l" > /dev/kmsg; done
+
+# 之后保持安静让报告留在屏幕上；60 秒后自动重启回 Android
+sleep 60
+echo "FUXI_REBOOT_NOW" > /dev/kmsg
+sleep 1
+reboot -f
+while true; do sleep 5; done

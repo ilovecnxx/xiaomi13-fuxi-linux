@@ -1,0 +1,11 @@
+# fuxi：rmtfs 只用 /var/lib/fuxi-rmtfs 里的 EFS 副本（modem_fs1/modem_fs2/modem_fsg/modem_fsc，
+# 取自 modemst1/modemst2/fsg/fsc 分区的只读拷贝），不碰真分区（发行版默认 -P 会直接读写分区）。
+# -s：rmtfs 就绪后由它启动基带 remoteproc（4080000.remoteproc），退出时停掉。
+[Unit]
+After=fuxi-firmware-devices.service tqftpserv.service
+Wants=tqftpserv.service
+ConditionPathExists=/var/lib/fuxi-rmtfs/modem_fs1
+
+[Service]
+ExecStart=
+ExecStart=/usr/bin/rmtfs -s -o /var/lib/fuxi-rmtfs

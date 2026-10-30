@@ -1,0 +1,33 @@
+--- work/patches/wifi-resume-cc-20261029/core.c.orig	2026-10-29 23:38:38.257081252 +0800
++++ build/linux/drivers/net/wireless/ath/ath12k/core.c	2026-10-29 23:38:49.071084764 +0800
+@@ -234,6 +234,8 @@
+ 
+ int ath12k_core_resume(struct ath12k_base *ab)
+ {
++	struct wmi_set_current_country_arg arg = {};
++	struct ath12k *ar;
+ 	long time_left;
+ 	int ret;
+ 
+@@ -248,6 +250,21 @@
+ 		return -ETIMEDOUT;
+ 	}
+ 
++	/* Firmware comes back from power down with its default country,
++	 * so restore the one user space set. So far only single_pdev_only
++	 * chips support suspend, so handle the first, and the only, pdev.
++	 */
++	ar = ab->pdevs[0].ar;
++	if (ab->hw_params->current_cc_support &&
++	    ar->alpha2[0] != 0 && ar->alpha2[1] != 0) {
++		memcpy(&arg.alpha2, ar->alpha2, 2);
++		reinit_completion(&ar->regd_update_completed);
++		ret = ath12k_wmi_send_set_current_country_cmd(ar, &arg);
++		if (ret)
++			ath12k_warn(ab, "failed to set country code during resume: %d\n",
++				    ret);
++	}
++
+ 	return 0;
+ }
+ EXPORT_SYMBOL(ath12k_core_resume);

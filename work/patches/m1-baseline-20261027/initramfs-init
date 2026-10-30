@@ -1,0 +1,36 @@
+#!/bin/busybox sh
+/bin/busybox --install -s /bin
+mkdir -p /proc /sys /dev /tmp
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+mkdir -p /dev/pts
+mount -t devpts devpts /dev/pts 2>/dev/null
+echo "FUXI_INIT_RUNNING" > /dev/kmsg
+
+n=0
+while [ ! -e /dev/ttyGS0 ] && [ "$n" -lt 10 ]; do
+  sleep 1
+  n=$((n + 1))
+done
+
+if [ -e /dev/ttyGS0 ]; then
+  echo "FUXI_USB_SERIAL_READY" > /dev/kmsg
+  exec setsid /bin/sh -i </dev/ttyGS0 >/dev/ttyGS0 2>&1
+fi
+
+echo "FUXI_USB_SERIAL_MISSING" > /dev/kmsg
+
+# 心跳 + 60 秒后自动重启回 Android（让实验可以全自动迭代，无需人工断电）
+i=0
+while [ 1 ]; do
+  i=$((i + 1))
+  echo "FUXI_ALIVE $i" > /dev/kmsg
+  if [ "$i" -ge 12 ]; then
+    echo "FUXI_REBOOT_NOW" > /dev/kmsg
+    sleep 1
+    reboot -f
+    sleep 1
+  fi
+  sleep 5
+done

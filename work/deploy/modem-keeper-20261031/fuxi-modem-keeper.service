@@ -1,0 +1,12 @@
+[Unit]
+Description=fuxi modem keeper (data-centric usage, radio cycle after network reject)
+After=ModemManager.service
+Wants=ModemManager.service
+
+[Service]
+ExecStart=/usr/bin/python3 /usr/local/sbin/fuxi-modem-keeper.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

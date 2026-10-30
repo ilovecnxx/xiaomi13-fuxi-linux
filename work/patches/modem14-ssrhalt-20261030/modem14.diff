@@ -1,0 +1,87 @@
+--- ../../work/patches/modem14-ssrhalt-20261030/gsi.c.before-modem14	2026-10-24 18:10:30.467361093 +0800
++++ drivers/net/ipa/gsi.c	2026-10-30 23:09:14.100554957 +0800
+@@ -1822,7 +1822,7 @@
+ 				   GSI_GENERIC_ALLOCATE_CHANNEL, 0);
+ }
+ 
+-static void gsi_modem_channel_halt(struct gsi *gsi, u32 channel_id)
++void gsi_modem_channel_halt(struct gsi *gsi, u32 channel_id)
+ {
+ 	u32 retries = GSI_CHANNEL_MODEM_HALT_RETRIES;
+ 	int ret;
+--- ../../work/patches/modem14-ssrhalt-20261030/gsi.h.before-modem14	2026-10-24 18:10:30.467361093 +0800
++++ drivers/net/ipa/gsi.h	2026-10-30 23:09:14.100745589 +0800
+@@ -208,6 +208,13 @@
+ 				    bool enable);
+ 
+ /**
++ * gsi_modem_channel_halt() - Halt a modem GSI channel
++ * @gsi:	GSI pointer returned by gsi_setup()
++ * @channel_id:	Modem channel to halt
++ */
++void gsi_modem_channel_halt(struct gsi *gsi, u32 channel_id);
++
++/**
+  * gsi_channel_reset() - Reset an allocated GSI channel
+  * @gsi:	GSI pointer
+  * @channel_id:	Channel to be reset
+--- ../../work/patches/modem14-ssrhalt-20261030/ipa_endpoint.c.before-modem14	2026-10-24 18:10:30.467361093 +0800
++++ drivers/net/ipa/ipa_endpoint.c	2026-10-30 23:09:14.101158826 +0800
+@@ -596,6 +596,24 @@
+ 	}
+ }
+ 
++/* Halt all modem GSI channels after a modem crash.  The modem allocates
++ * these channels itself on IPA v5.5, and fails to initialize channel 0
++ * again after a restart if it was left running (seen on Xiaomi 13).
++ */
++void ipa_endpoint_modem_halt_all(struct ipa *ipa)
++{
++	u32 endpoint_id = 0;
++
++	while (endpoint_id < ipa->endpoint_count) {
++		struct ipa_endpoint *endpoint = &ipa->endpoint[endpoint_id++];
++
++		if (endpoint->ee_id != GSI_EE_MODEM)
++			continue;
++
++		gsi_modem_channel_halt(&ipa->gsi, endpoint->channel_id);
++	}
++}
++
+ /* Reset all modem endpoints to use the default exception endpoint */
+ int ipa_endpoint_modem_exception_reset_all(struct ipa *ipa)
+ {
+--- ../../work/patches/modem14-ssrhalt-20261030/ipa_endpoint.h.before-modem14	2026-10-24 18:10:30.468361086 +0800
++++ drivers/net/ipa/ipa_endpoint.h	2026-10-30 23:09:14.100865470 +0800
+@@ -173,6 +173,8 @@
+ 
+ void ipa_endpoint_modem_pause_all(struct ipa *ipa, bool enable);
+ 
++void ipa_endpoint_modem_halt_all(struct ipa *ipa);
++
+ int ipa_endpoint_modem_exception_reset_all(struct ipa *ipa);
+ 
+ int ipa_endpoint_skb_tx(struct ipa_endpoint *endpoint, struct sk_buff *skb);
+--- ../../work/patches/modem14-ssrhalt-20261030/ipa_modem.c.before-modem14	2026-10-24 18:10:30.468361086 +0800
++++ drivers/net/ipa/ipa_modem.c	2026-10-30 23:09:39.658037852 +0800
+@@ -9,6 +9,7 @@
+ #include <linux/if_arp.h>
+ #include <linux/if_rmnet.h>
+ #include <linux/netdevice.h>
++#include <linux/of.h>
+ #include <linux/pm_runtime.h>
+ #include <linux/skbuff.h>
+ #include <net/pkt_sched.h>
+@@ -421,6 +422,11 @@
+ 
+ 	ipa_endpoint_modem_pause_all(ipa, true);
+ 
++	if (of_machine_is_compatible("xiaomi,fuxi")) {
++		ipa_endpoint_modem_halt_all(ipa);
++		dev_info(dev, "fuxi: halted modem GSI channels\n");
++	}
++
+ 	ipa_endpoint_modem_hol_block_clear_all(ipa);
+ 
+ 	ipa_table_reset(ipa, true);

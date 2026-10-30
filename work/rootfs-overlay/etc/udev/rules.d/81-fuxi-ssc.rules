@@ -1,0 +1,3 @@
+# Xiaomi 13 (fuxi): libssc exposes accelerometer and proximity on ADSP too.
+# Keep the distribution's light/compass tags and avoid the secure FastRPC node.
+ACTION!="remove", SUBSYSTEM=="misc", KERNEL=="fastrpc-adsp", ENV{IIO_SENSOR_PROXY_TYPE}+="ssc-accel ssc-proximity"

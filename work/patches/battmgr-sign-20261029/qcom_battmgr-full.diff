@@ -1,0 +1,81 @@
+diff --git a/drivers/power/supply/qcom_battmgr.c b/drivers/power/supply/qcom_battmgr.c
+index 7716eb9e1..a4bf9efe3 100644
+--- a/drivers/power/supply/qcom_battmgr.c
++++ b/drivers/power/supply/qcom_battmgr.c
+@@ -9,6 +9,7 @@
+ #include <linux/module.h>
+ #include <linux/mutex.h>
+ #include <linux/nvmem-consumer.h>
++#include <linux/of.h>
+ #include <linux/of_device.h>
+ #include <linux/power_supply.h>
+ #include <linux/property.h>
+@@ -313,6 +314,8 @@ struct qcom_battmgr {
+ 	struct pmic_glink_client *client;
+ 
+ 	enum qcom_battmgr_variant variant;
++	/* firmware has BATT_CONSTANT_CURRENT before BATT_TEMP, see qcom_battmgr_prop_to_fw() */
++	bool shifted_props;
+ 
+ 	struct power_supply *ac_psy;
+ 	struct power_supply *bat_psy;
+@@ -452,6 +455,26 @@ static const u8 sm8350_bat_prop_map[] = {
+ 	[POWER_SUPPLY_PROP_CHARGE_CONTROL_END_THRESHOLD] = BATT_CHG_CTRL_END_THR,
+ };
+ 
++/*
++ * Xiaomi's SM8550 ADSP firmware inserts BATT_CONSTANT_CURRENT after
++ * BATT_CHG_CTRL_LIM_MAX, so every battery property from BATT_TEMP on is one
++ * higher than in the reference firmware.
++ */
++static unsigned int qcom_battmgr_prop_to_fw(struct qcom_battmgr *battmgr,
++					    unsigned int prop)
++{
++	return battmgr->shifted_props && prop >= BATT_TEMP ? prop + 1 : prop;
++}
++
++static unsigned int qcom_battmgr_prop_from_fw(struct qcom_battmgr *battmgr,
++					      unsigned int prop)
++{
++	if (!battmgr->shifted_props || prop < BATT_TEMP)
++		return prop;
++	/* BATT_TEMP's slot is the constant current property, which is not used */
++	return prop == BATT_TEMP ? UINT_MAX : prop - 1;
++}
++
+ static int qcom_battmgr_bat_sm8350_update(struct qcom_battmgr *battmgr,
+ 					  enum power_supply_property psp)
+ {
+@@ -464,7 +487,8 @@ static int qcom_battmgr_bat_sm8350_update(struct qcom_battmgr *battmgr,
+ 	prop = sm8350_bat_prop_map[psp];
+ 
+ 	mutex_lock(&battmgr->lock);
+-	ret = qcom_battmgr_request_property(battmgr, BATTMGR_BAT_PROPERTY_GET, prop, 0);
++	ret = qcom_battmgr_request_property(battmgr, BATTMGR_BAT_PROPERTY_GET,
++					    qcom_battmgr_prop_to_fw(battmgr, prop), 0);
+ 	mutex_unlock(&battmgr->lock);
+ 
+ 	return ret;
+@@ -1381,7 +1405,8 @@ static void qcom_battmgr_sm8350_callback(struct qcom_battmgr *battmgr,
+ 
+ 	switch (opcode) {
+ 	case BATTMGR_BAT_PROPERTY_GET:
+-		property = le32_to_cpu(resp->intval.property);
++		property = qcom_battmgr_prop_from_fw(battmgr,
++						     le32_to_cpu(resp->intval.property));
+ 		if (property == BATT_MODEL_NAME) {
+ 			if (payload_len != sizeof(resp->strval)) {
+ 				dev_warn(battmgr->dev,
+@@ -1658,6 +1683,12 @@ static int qcom_battmgr_probe(struct auxiliary_device *adev,
+ 	else
+ 		battmgr->variant = QCOM_BATTMGR_SM8350;
+ 
++	/* Xiaomi firmware: shifted property ids and no charge control thresholds */
++	if (of_machine_is_compatible("xiaomi,fuxi")) {
++		battmgr->shifted_props = true;
++		battmgr->variant = QCOM_BATTMGR_SM8350;
++	}
++
+ 	ret = qcom_battmgr_charge_control_thresholds_init(battmgr);
+ 	if (ret < 0)
+ 		return dev_err_probe(dev, ret,
