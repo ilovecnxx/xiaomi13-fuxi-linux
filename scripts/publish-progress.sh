@@ -70,6 +70,9 @@ if [ "${FUXI_PUBLISH_IMAGES:-0}" = "1" ]; then
   done
 fi
 
+# CHANGELOG：本地维护，公开发布时同步（README/PROGRESS 是人工维护的发布版，不在这里覆盖）
+[ -f "$B/CHANGELOG.md" ] && cp -f "$B/CHANGELOG.md" .
+
 # PROGRESS.md 由人工维护（不在此覆盖），若缺失才生成占位
 [ -f PROGRESS.md ] || printf '# fuxi 主线移植进度\n\n见 docs/。\n' > PROGRESS.md
 
