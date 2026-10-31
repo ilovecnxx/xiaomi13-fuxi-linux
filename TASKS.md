@@ -230,3 +230,18 @@
 - 【推测】sensor 没 probe 成功之前，Snapshot 会显示「无摄像头」；成功后要靠 libcamera simple 管线 + 软件 ISP 出图。
 - `fuxi-camera-trial.sh` 抓日志时加了 `cam -l`。
 - 用户已确认 camera5 试验，但 `fuxi-camera-trial.sh` 被 Claude Code 自动模式权限分类器拦了两次，**没执行**，设备没有任何改动。
+
+## 2026-11-01 00:38 camera5 实测：OV13B10 probe 成功，libcamera 认出摄像头
+
+- 【已实测】#227 上 `ov13b10 0-0036` probe 成功（dmesg 无 `-5`），MCLK1 归 `0-0036`，出现 v4l-subdev0–30。
+  `cam -l`：libcamera 0.7.0 用 simple 管线添加了 `/base/soc@0/cci@ac15000/i2c-bus@0/camera@36`。
+  → **0x36 地址这个判断是对的**，上电/复位/MCLK 时序也够用。
+- 【已实测·新卡点】`DmaBufAllocator: Could not open any dma-buf provider` → 软件 ISP 被禁用，
+  只能出原始 Bayer，Snapshot 出不了正常画面。原因：内核没开 `DMABUF_HEAPS`/`UDMABUF`。
+- 其它 libcamera WARN（缺 crop 矩形、旋转、位置、静态属性）不阻塞出图，后续给驱动/DT 补
+  `rotation`、`orientation` 和 `get_selection`。
+- 已刷回 #207，health rc=1：3 项 FAIL 都是 WiFi 未连（iPhone 热点不在扫描列表），其余全 PASS。
+  日志 `work/claude-logs/trial-camera5-20261101-0037.log`、`health-20261101-003959.log`。
+- 【仅编译通过】camera6 #228：`fuxi-build-abl.sh` 的 camera 变体加 `DMABUF_HEAPS`/`DMABUF_HEAPS_SYSTEM`/`UDMABUF`，
+  `work/kbuild/abl-fuxi-camera6.img` sha256 `13897e5eff10891d3721ba7b5cf6cc6a6a04fbf79143e3db735b41e3147dc7bf`。内核源码没改。
+- 下一步：用户确认后跑 camera6 试验 + `cam -c1 --capture=3` 抓帧，再在屏幕上开 Snapshot 看画面。

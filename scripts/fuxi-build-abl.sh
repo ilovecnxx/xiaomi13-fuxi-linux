@@ -61,7 +61,8 @@ if [ "${2:-}" != "--no-kernel" ]; then
     *-audio*) VARIANT_CFG=("${AUDIO_CFG[@]}") ;;
     *-camera) VARIANT_CFG=(-e I2C_QCOM_CCI -e I2C_CHARDEV -e FUXI_CAMERA_POWER -e MEDIA_SUPPORT -e MEDIA_CAMERA_SUPPORT
               -e MEDIA_PLATFORM_SUPPORT -e MEDIA_CONTROLLER -e V4L_PLATFORM_DRIVERS -e VIDEO_DEV
-              -e VIDEO_V4L2_SUBDEV_API -e VIDEO_QCOM_CAMSS -e VIDEO_OV13B10) ;;
+              -e VIDEO_V4L2_SUBDEV_API -e VIDEO_QCOM_CAMSS -e VIDEO_OV13B10
+              -e DMABUF_HEAPS -e DMABUF_HEAPS_SYSTEM -e UDMABUF) ;;  # libcamera 软件 ISP 需要 dma-buf 分配器（camera5 实测缺失）
     *-sleep) VARIANT_CFG=(-e SUSPEND -e PM_SLEEP) ; FUXI_PM=1 ;;
     *-full) VARIANT_CFG=("${DISP_CFG[@]}" "${USBC_CFG[@]}" "${AUDIO_CFG[@]}" -e DRM_MSM_DP) ;;
   esac
