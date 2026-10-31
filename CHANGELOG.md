@@ -3,6 +3,22 @@
 Xiaomi 13（fuxi / SM8550）Android + 主线 Linux 双系统。
 版本对应 GitHub release（`ilovecnxx/xiaomi13-fuxi-linux-ubuntu26.10-kernel7.3`）。
 
+## 未发布 — 2026-11-01：相机 OV13B10 出帧 + 全量历史上 GitHub
+
+### 相机（OV13B10 超广角）
+- I2C 地址按厂商 sensormodule 从 `0x10` 改到 `0x36`（内核 `c9b7bbd22`），**camera5 #227 实测 probe 成功**，
+  libcamera 0.7.0 simple 管线识别出摄像头。
+- camera6 #228 补 `DMABUF_HEAPS`/`UDMABUF` 后 dma-buf 分配器就位，`cam -c1 --capture=3` 抓到 3 帧；
+  但 raw 帧约 60% 字节成段变 0 —— 根因是 `&camss` 缺 `dma-coherent`（内核 `476dc80e0`）。
+- 新增 DTB 变体 `r120idle-mic-rupdclk-audio-disp-camera`（日常全量 + 相机）；
+  `work/kbuild/abl-fuxi-daily-camera.img`（sha256 `4b1e5f9e…`）**仅编译通过、未上机**。
+- 另加 `scripts/v4l2ctl.py`（手机无 v4l-utils 时读写 v4l2 控件）。
+
+### 工程
+- 全量开发历史（含 TASKS.md/交接/补丁/脚本）推送到 GitHub `main` 分支；
+  README 新增「换电脑继续开发」与「新机器重建内核树」步骤。
+- 全量补丁重导出：`work/patches/full-tree-20261031/full-20261031.diff`（69 文件 / 5427 行，sha256 `96c51693…`）。
+
 ## v0.5.0 — 2026-10-31：蜂窝数据打通 + keeper + 工程收尾
 
 ### 蜂窝 / 基带

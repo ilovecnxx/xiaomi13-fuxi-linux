@@ -118,19 +118,46 @@ scripts/git-autosync.sh --dry-run    # 预演
 scripts/git-autosync.sh --status     # 最近提交 / 发布仓库 / 日志
 ```
 
-- 本地仓库：`main`，只在本机（无 remote），记录全部内部资料
-- GitHub：仅发布白名单子集（docs/research/scripts，排除交接/任务/评审/宣传/内部工具/镜像），
-  由 `scripts/publish-progress.sh` 推送到 `work/gh-publish`（该目录在 `.gitignore` 内，不重复入库）
+- 本地仓库：`main`，记录全部内部资料
+- GitHub 全量分支：`origin/main` = `https://github.com/ilovecnxx/xiaomi13-fuxi-linux-ubuntu26.10-kernel7.3`
+  的 `main` 分支（2026-11-01 起手动推送，含 TASKS.md/交接文档/补丁/脚本；`master` 仍是旧的精选公开快照，两者历史无关）
+- GitHub 精选快照：仍由 `scripts/publish-progress.sh` 发布白名单子集到 `work/gh-publish`（不重复入库）
 - 日志：`work/claude-logs/git-autosync.log`
 - 暂停自动同步：`crontab -e` 删除 `git-autosync.sh` 那一行
+
+## 换电脑继续开发
+
+全量开发历史在 GitHub 的 `main` 分支（`master` 是旧的精选快照，别用）：
+
+```bash
+git clone -b main https://github.com/ilovecnxx/xiaomi13-fuxi-linux-ubuntu26.10-kernel7.3.git linux-android
+cd linux-android
+scripts/fuxi-agent-preflight.sh          # 先看缺什么：内核树/工具链/state
+```
+
+仓库**不含**大件：`build/linux`（内核源码树）、`work/kbuild/*.img`（镜像）、`backups/`、`work/ssh/`
+都在 `.gitignore` 内，需要在新机重建，见下一节与 `docs/kbuild-镜像清单-20261031.md`。
+推回 GitHub：`git push origin main`（需要自己的 PAT 或 `gh auth login`）。
 
 ## 内核源码与可复现性
 
 - 内核源码在 `build/linux`（torvalds 主干 clone），累计移植改动已提交到本地分支 **`fuxi/20261031`**（基于 `5b0764a53`）。
-- 全量补丁：`work/patches/full-tree-20261031/full-20261031.diff`（5302 行，含 `SHA256SUMS`，反向 apply 校验通过）；误提交的 `ipa_mem.c.orig` 已移除并备份到 `work/patches/full-tree-20261031/removed-artifacts/`。
+- 全量补丁：`work/patches/full-tree-20261031/full-20261031.diff`（5427 行，含 `SHA256SUMS`，反向 apply 校验通过）；误提交的 `ipa_mem.c.orig` 已移除并备份到 `work/patches/full-tree-20261031/removed-artifacts/`。
 - `.build.json` 现在记录 `kernel_branch` / `kernel_dirty_diff_sha256` / `kernel_untracked_files` / `kernel_clean`；
   构建前确认内核树干净，否则记下 dirty-diff 指纹。
 - 镜像清单与保留策略：`docs/kbuild-镜像清单-20261031.md`；历史遗留处理：`docs/历史遗留与清理记录-20261031.md`。
+- **新机器重建内核树**（`build/linux` 不入库）：
+
+```bash
+git clone https://github.com/torvalds/linux build/linux    # 完整 clone，别用 --depth 1（要 5b0764a53）
+git -C build/linux switch -c fuxi/20261031 5b0764a53235d3c77e1ed674e836e1b3fe1a4b1f
+git -C build/linux apply --3way work/patches/full-tree-20261031/full-20261031.diff
+git -C build/linux add -A && git -C build/linux commit -m "fuxi: 从全量补丁还原累计移植改动"
+git -C build/linux diff 5b0764a53..fuxi/20261031 | sha256sum   # 应等于 96c51693…
+```
+
+  本机 `build/linux` 的 `master` 恰好就停在 `5b0764a53`，所以 preflight 用 `master..fuxi/20261031` 校验；
+  新机的 `master` 会更新，比对时直接对 `5b0764a53` 做 diff。
 
 ## 切换 agent / 接力开发（必读）
 
