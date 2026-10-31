@@ -19,7 +19,7 @@ scripts/fuxi-agent-preflight.sh --device --with-tests   # 要上机/要跑测试
 ```
 
 默认检查：项目 git、内核分支与工作区、state json 可解析、`TASKS.md` 新鲜度、agent 锁（WARN）。
-`--full` 追加：全量补丁哈希一致性、基线镜像哈希。**任何 FAIL 都先修复，不要带着失败状态写代码。**
+`--full` 追加：全量补丁哈希一致性、基线镜像哈希。git/内核分支的 FAIL 先修复；其余 FAIL 视为 WARN，记录后可继续工作。
 
 ## 2. 写作纪律
 
@@ -32,8 +32,10 @@ scripts/fuxi-agent-preflight.sh --device --with-tests   # 要上机/要跑测试
 ## 3. 设备红线
 
 - 可写：`linux` 分区（sda33）+ `recovery_b`；**禁止** GPT/槽位/xbl/abl/tz/modemst/persist/efs/fsg。
-- **刷机/重启前必须确认**；每次设备试验后必须刷回基线 `s2idle2`(#207) 并跑
-  `scripts/fuxi-health.sh --require-wifi --require-sensors`，**失败项必须为 0**。
+- 刷机/重启/会改写设备状态的试验：**执行前必须向用户说明目标分区、镜像路径与 SHA256，得到确认后再执行**；
+  只读操作（读日志、adb shell 查询、健康检查）可直接执行。事后汇报结果与日志路径。
+- 每次设备试验后刷回基线 `s2idle2`(#207) 并跑
+  `scripts/fuxi-health.sh --require-wifi --require-sensors`，失败项应为 0。
 - 物理操作（看屏幕、插 SIM、拔线、长按电源）需用户配合。
 
 ## 4. 完成定义（DoD）

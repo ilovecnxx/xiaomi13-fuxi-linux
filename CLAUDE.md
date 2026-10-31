@@ -9,5 +9,7 @@
 - 上下文纪律见全局 `~/.claude/CLAUDE.md`；切换任务前用 `/handoff` 写交接、再 `/clear`。
 - 新会话开场用 `/start`（会读 TASKS.md 并先跑 `scripts/fuxi-agent-preflight.sh`）。
 - 长任务/实验前先 `scripts/fuxi-agent-lock.sh acquire claude "<任务>"`，结束 `release`。
-- 涉及刷机/重启：先读 `work/state/current-device.json` 的 `device_current`，确认基线镜像与哈希，
-  试验后刷回 `s2idle2`(#207) 并跑健康检查。
+- 涉及刷机/重启：**每次执行前需用户确认**（见 AGENTS.md 第 3 节）。执行前读 `work/state/current-device.json`
+  核对基线镜像与哈希，试验后刷回 `s2idle2`(#207) 并跑健康检查。
+- 权限：`.claude/settings.local.json` 对 fastboot、adb reboot 及刷机/引导类脚本设了 `ask` 规则，其余命令自动放行。
+- preflight 只有 git/内核分支 FAIL 才阻塞，其余 FAIL 视为 WARN，记录后继续。
