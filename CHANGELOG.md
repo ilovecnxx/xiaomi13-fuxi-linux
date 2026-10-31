@@ -3,15 +3,6 @@
 Xiaomi 13（fuxi / SM8550）Android + 主线 Linux 双系统。
 版本对应 GitHub release（`ilovecnxx/xiaomi13-fuxi-linux-ubuntu26.10-kernel7.3`）。
 
-## 未发布 — 2026-10-31：设备动作脚本化 + 对话安全写法
-
-- 新增 `scripts/fuxi-flash.sh`：刷写/重启的人工入口。默认只读（`status`/`plan`），`--yes` 才动设备；
-  只写 `recovery_b`；镜像限定 `work/kbuild|work/patches`；写前比对 state json 的 sha256（未知镜像需
-  `--allow-unknown-image`），写后读回全量 sha256 校验；日志 `work/claude-logs/flash-*.log`。
-- `CLAUDE.md` 新增「对话安全写法（模型侧 `[cyber]` 误报）」：设备动作由人执行、原始产物落文件、
-  一次一步、被拒后不要连发"继续"。
-- 起因：20:32 `adb reboot recovery` 后 Opus 4.8 连续三次 `[cyber]` 拒答（生成侧判定）。未实机刷写。
-
 ## v0.5.0 — 2026-10-31：蜂窝数据打通 + keeper + 工程收尾
 
 ### 蜂窝 / 基带
