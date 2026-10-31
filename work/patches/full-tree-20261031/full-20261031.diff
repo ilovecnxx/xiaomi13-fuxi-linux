@@ -637,10 +637,10 @@ index 000000000..ae6165f01
 +#include "sm8550-xiaomi-fuxi-camera.dtsi"
 diff --git a/arch/arm64/boot/dts/qcom/sm8550-xiaomi-fuxi-camera.dtsi b/arch/arm64/boot/dts/qcom/sm8550-xiaomi-fuxi-camera.dtsi
 new file mode 100644
-index 000000000..74e76de6b
+index 000000000..9c7bcbc38
 --- /dev/null
 +++ b/arch/arm64/boot/dts/qcom/sm8550-xiaomi-fuxi-camera.dtsi
-@@ -0,0 +1,255 @@
+@@ -0,0 +1,292 @@
 +// SPDX-License-Identifier: BSD-3-Clause
 +/*
 + * Xiaomi 13 (fuxi)：相机第一步——给四个模组上电并用 CCI（i2c-dev）读传感器 ID。
@@ -714,6 +714,7 @@ index 000000000..74e76de6b
 +		reset-gpios = <&tlmm 118 GPIO_ACTIVE_LOW>;
 +		pinctrl-0 = <&cam_mclk2_default>;
 +		pinctrl-names = "default";
++		status = "disabled";  /* 由 sensor 自己管供电/时钟/复位 */
 +	};
 +
 +	cam2_power: camera-power-cam2 {
@@ -727,6 +728,7 @@ index 000000000..74e76de6b
 +		reset-gpios = <&tlmm 117 GPIO_ACTIVE_LOW>;
 +		pinctrl-0 = <&cam_mclk1_default>;
 +		pinctrl-names = "default";
++		status = "disabled";  /* 由 sensor 自己管供电/时钟/复位 */
 +	};
 +
 +	cam1_power: camera-power-cam1 {
@@ -739,6 +741,7 @@ index 000000000..74e76de6b
 +		reset-gpios = <&tlmm 120 GPIO_ACTIVE_LOW>;
 +		pinctrl-0 = <&cam_mclk4_default>;
 +		pinctrl-names = "default";
++		status = "disabled";  /* 由 sensor 自己管供电/时钟/复位 */
 +	};
 +
 +	cam3_power: camera-power-cam3 {
@@ -755,6 +758,7 @@ index 000000000..74e76de6b
 +		reset-gpios = <&tlmm 119 GPIO_ACTIVE_LOW>;
 +		pinctrl-0 = <&cam_mclk3_default>;
 +		pinctrl-names = "default";
++		status = "disabled";  /* 由 sensor 自己管供电/时钟/复位 */
 +	};
 +};
 +
@@ -819,6 +823,28 @@ index 000000000..74e76de6b
 +
 +&cci0_i2c0 {
 +	clock-frequency = <400000>;
++
++	/* cam2 超广角：OV13B10，CCI0 主机0 / MCLK1 / reset GPIO117 / CSIPHY0 */
++	camera@10 {
++		compatible = "ovti,ov13b10";
++		reg = <0x10>;
++
++		clocks = <&camcc CAM_CC_MCLK1_CLK>;
++		clock-names = "xvclk";
++		reset-gpios = <&tlmm 117 GPIO_ACTIVE_LOW>;
++
++		avdd-supply = <&cam_ultra_avdd>;    /* 2.8V，GPIO91 开关 */
++		dvdd-supply = <&vreg_l1c_1p2>;      /* 1.2V */
++		dovdd-supply = <&vreg_l2c_1p8>;     /* 1.8V */
++
++		port {
++			ov13b10_ep: endpoint {
++				data-lanes = <0 1 2 3>;
++				link-frequencies = /bits/ 64 <400000000>;
++				remote-endpoint = <&csiphy0_ep>;
++			};
++		};
++	};
 +};
 +
 +&cci0_i2c1 {
@@ -895,6 +921,17 @@ index 000000000..74e76de6b
 +	vdda-phy-supply = <&vreg_l1e_0p88>;
 +	vdda-pll-supply = <&vreg_l3e_1p2>;
 +	status = "okay";
++
++	ports {
++		port@0 {
++			csiphy0_ep: endpoint@0 {
++				reg = <0>;
++				clock-lanes = <7>;
++				data-lanes = <0 1 2 3>;
++				remote-endpoint = <&ov13b10_ep>;
++			};
++		};
++	};
 +};
 diff --git a/arch/arm64/boot/dts/qcom/sm8550-xiaomi-fuxi-desk.dts b/arch/arm64/boot/dts/qcom/sm8550-xiaomi-fuxi-desk.dts
 new file mode 100644
@@ -4008,6 +4045,31 @@ index 000000000..aa05f6eff
 +
 +MODULE_DESCRIPTION("STMicroelectronics FTM5 SPI touchscreen driver");
 +MODULE_LICENSE("GPL");
+diff --git a/drivers/media/i2c/ov13b10.c b/drivers/media/i2c/ov13b10.c
+index b0d34141a..19b688913 100644
+--- a/drivers/media/i2c/ov13b10.c
++++ b/drivers/media/i2c/ov13b10.c
+@@ -1705,11 +1705,20 @@ static const struct acpi_device_id ov13b10_acpi_ids[] = {
+ MODULE_DEVICE_TABLE(acpi, ov13b10_acpi_ids);
+ #endif
+ 
++/* fuxi: OV13B10 也在 DT 平台上用（小米 13 超广角），驱动本身已走 fwnode/graph，
++ * 只缺一个 OF 匹配表。上游可单独提这个补丁。 */
++static const struct of_device_id ov13b10_of_ids[] = {
++	{ .compatible = "ovti,ov13b10" },
++	{ /* sentinel */ }
++};
++MODULE_DEVICE_TABLE(of, ov13b10_of_ids);
++
+ static struct i2c_driver ov13b10_i2c_driver = {
+ 	.driver = {
+ 		.name = "ov13b10",
+ 		.pm = pm_ptr(&ov13b10_pm_ops),
+ 		.acpi_match_table = ACPI_PTR(ov13b10_acpi_ids),
++		.of_match_table = ov13b10_of_ids,
+ 	},
+ 	.probe = ov13b10_probe,
+ 	.remove = ov13b10_remove,
 diff --git a/drivers/misc/Kconfig b/drivers/misc/Kconfig
 index 7364931da..40b43635f 100644
 --- a/drivers/misc/Kconfig

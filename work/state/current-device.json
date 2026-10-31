@@ -54,13 +54,14 @@
   "last_health_log": "work/claude-logs/health-20261031-020401.log（#207，02:04）",
   "kernel_repro": {
     "branch": "fuxi/20261031",
-    "commit": "18e74dc1d",
+    "commit": "e0552c9ee",
     "base_commit": "5b0764a53235d3c77e1ed674e836e1b3fe1a4b1f",
     "full_patch": "work/patches/full-tree-20261031/full-20261031.diff",
-    "full_patch_sha256": "2bf34d56fd9273f1a3ad010b3ca609aea017cba2963106061c86688153bb5661",
+    "full_patch_sha256": "6076d5a6e113c3ef5c4632224d703dafd817bc0146f87e995776fcb88034ecf1",
     "verified": "反向 apply --check 通过（2026-10-31，清理 ipa_mem.c.orig 后重新导出）",
-    "cleanup_commit": "18e74dc1d",
-    "full_patch_lines": 5302
+    "cleanup_commit": "e0552c9ee",
+    "camera_commit": "e0552c9ee（OV13B10 OF 匹配 + fuxi 相机 DTS 接入）",
+    "full_patch_lines": 5364
   },
   "build_manifest": "docs/kbuild-镜像清单-20261031.md",
   "legacy_notes": "docs/历史遗留与清理记录-20261031.md",

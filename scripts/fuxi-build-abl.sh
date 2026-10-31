@@ -36,6 +36,9 @@ trap cleanup EXIT
 if [ "${2:-}" != "--no-kernel" ]; then
   cd "$K"
   cp .config "$W/main.config"
+  # 配置里 INITRAMFS_SOURCE 是绝对路径；工作区搬家后旧路径失效（2026-10-31 构建报
+  # gen_initramfs.sh: Cannot open .../old-workspace/build/initramfs）。按当前工作区重写。
+  sed -i "s#^CONFIG_INITRAMFS_SOURCE=.*#CONFIG_INITRAMFS_SOURCE=\"$B/build/initramfs $B/build/initramfs.list\"#" .config
   # 原生显示驱动变体（-disp）要 DRM_MSM + 面板驱动；主配置不能开（MSM 会抢走 -min 里的 MDSS 占位节点）。
   # 构建期间临时打开，结束后恢复主配置。
   # 音频变体（-audio）要 ALSA/ASoC + AudioReach + CS35L41（主 DTS 里 LPASS 宏默认是开的，先不进主配置）。
@@ -57,7 +60,8 @@ if [ "${2:-}" != "--no-kernel" ]; then
     *-desk) VARIANT_CFG=("${DISP_CFG[@]}" "${USBC_CFG[@]}" -e DRM_MSM_DP) ;;
     *-audio*) VARIANT_CFG=("${AUDIO_CFG[@]}") ;;
     *-camera) VARIANT_CFG=(-e I2C_QCOM_CCI -e I2C_CHARDEV -e FUXI_CAMERA_POWER -e MEDIA_SUPPORT -e MEDIA_CAMERA_SUPPORT
-              -e MEDIA_PLATFORM_SUPPORT -e V4L_PLATFORM_DRIVERS -e VIDEO_DEV -e VIDEO_QCOM_CAMSS) ;;
+              -e MEDIA_PLATFORM_SUPPORT -e MEDIA_CONTROLLER -e V4L_PLATFORM_DRIVERS -e VIDEO_DEV
+              -e VIDEO_V4L2_SUBDEV_API -e VIDEO_QCOM_CAMSS -e VIDEO_OV13B10) ;;
     *-sleep) VARIANT_CFG=(-e SUSPEND -e PM_SLEEP) ; FUXI_PM=1 ;;
     *-full) VARIANT_CFG=("${DISP_CFG[@]}" "${USBC_CFG[@]}" "${AUDIO_CFG[@]}" -e DRM_MSM_DP) ;;
   esac
