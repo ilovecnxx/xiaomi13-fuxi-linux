@@ -4,8 +4,8 @@
   "device": "Xiaomi 13 fuxi",
   "project_goal": "Reach stable daily-use Linux on Xiaomi 13 fuxi through source-backed driver fixes, reproducible builds, staged validation and rollback-safe releases.",
   "roadmap": "docs/手机日用目标-路线图-20261029.md",
-  "updated_at": "2026-10-31T23:55+08:00",
-  "updated": "2026-10-31T23:55+08:00",
+  "updated_at": "2026-11-01T00:28+08:00",
+  "updated": "2026-11-01T00:28+08:00",
   "baseline_daily_image": "work/kbuild/abl-fuxi-s2idle2.img",
   "baseline_daily_sha256": "186e102f905dd2bbb5c3636e7f393aedb77191bbcc6b04010344d56290a4cd69",
   "recovery_b_image": "work/kbuild/abl-fuxi-s2idle2.img",
@@ -54,18 +54,24 @@
   "last_health_log": "work/claude-logs/health-20261031-020401.log（#207，02:04）",
   "kernel_repro": {
     "branch": "fuxi/20261031",
-    "commit": "cb0a84212",
+    "commit": "c9b7bbd22",
     "base_commit": "5b0764a53235d3c77e1ed674e836e1b3fe1a4b1f",
     "full_patch": "work/patches/full-tree-20261031/full-20261031.diff",
-    "full_patch_sha256": "6b7eb2ed7c1a34348a5eb0059c65709ac4c9acca2131cae081e56b9285d970b7",
-    "verified": "反向 apply --check 通过（2026-10-31 23:2x 重导出，含 66ecba7e2）",
+    "full_patch_sha256": "79544f9bc229f54562d704e6ab88795c538967365b6506478cd6d73faba25f8e",
+    "verified": "反向 apply --check 无报错（2026-11-01 00:27 重导出，含 c9b7bbd22）",
     "cleanup_commit": "e0552c9ee",
-    "camera_commit": "66ecba7e2（ov13b10 自带 MCLK1 pinctrl + 19.2MHz；之前 2fc60342e 560MHz link-freq、e0552c9ee OF 匹配+DTS）",
-    "full_patch_lines": 5369
+    "camera_commit": "c9b7bbd22（OV13B10 I2C 0x10→0x36，按厂商 sensormodule）；之前 cb0a84212 复位时序、66ecba7e2 MCLK1 pinctrl",
+    "full_patch_lines": 5410
   },
   "build_manifest": "docs/kbuild-镜像清单-20261031.md",
   "legacy_notes": "docs/历史遗留与清理记录-20261031.md",
   "reachable": "USB 10.42.0.x 与 WiFi SSH 均可达",
   "device_details": "docs/设备详情快照-20261030.md",
-  "last_charging_event": "docs/充电电池事件-20261031.md"
+  "last_charging_event": "docs/充电电池事件-20261031.md",
+  "camera_next_image": {
+    "image": "work/kbuild/abl-fuxi-camera5.img",
+    "kernel": "#227",
+    "sha256": "0f3affcb530fb871e76fa4bdc982904a4b9374f570bef375ff231373cebb5f90",
+    "status": "仅编译通过，待用户确认后上机"
+  }
 }

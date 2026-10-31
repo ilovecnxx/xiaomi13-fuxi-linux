@@ -209,3 +209,15 @@
 - 构建工具链已装好（用户提供 sudo 密码，不入文件）；`fuxi-build-abl.sh` 修了
   `CONFIG_INITRAMFS_SOURCE` 旧绝对路径问题。
 - 下一个 agent 请从交接文档 §7 的「下一步」开始，并先跑 `scripts/fuxi-agent-preflight.sh`。
+
+## 2026-11-01 00:30 相机：OV13B10 I2C 地址应为 0x36（不是 0x10）
+
+- 【证据】厂商 `work/device-info/camera/com.qti.sensormodule.fuxi_ofilm_ov13b10_ultra.bin` 偏移 0x16de8：
+  `slaveAddr=0x6c`(8 位) / addrType=2 / dataType=2 / ID 寄存器 `0x300b` 期望 `0x0d42`
+  → 7 位地址 **0x36**，与 `ov13b10.c` 读 `0x300a`=0x560d42 吻合。同格式下 ov32c=0x30、s5k3k1=0x5a、imx800=0x20，交叉印证。
+- 解释了 #223–#225 读 ID 一律 `-5`：一直在问 0x10（无设备应答）。
+- 内核 `c9b7bbd22`：DTS `camera@10` → `camera@36`。全量补丁重导出 sha `79544f9b…`（5410 行）。
+- 【仅编译通过】`work/kbuild/abl-fuxi-camera5.img`（#227，含 cb0a84212 复位时序），
+  sha256 `0f3affcb530fb871e76fa4bdc982904a4b9374f570bef375ff231373cebb5f90`。
+- 下一步：用户确认后 `scripts/fuxi-camera-trial.sh work/kbuild/abl-fuxi-camera5.img`（写 recovery_b → 抓日志 → 刷回 #207 → 健康检查）。
+- 设备当前跑 **#225 camera3**（recovery_b 已是 s2idle2，下次重启即回基线），电量 87%、-255 mA 放电。

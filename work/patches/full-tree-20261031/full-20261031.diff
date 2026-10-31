@@ -637,7 +637,7 @@ index 000000000..ae6165f01
 +#include "sm8550-xiaomi-fuxi-camera.dtsi"
 diff --git a/arch/arm64/boot/dts/qcom/sm8550-xiaomi-fuxi-camera.dtsi b/arch/arm64/boot/dts/qcom/sm8550-xiaomi-fuxi-camera.dtsi
 new file mode 100644
-index 000000000..d59fa7730
+index 000000000..6e01f9ea0
 --- /dev/null
 +++ b/arch/arm64/boot/dts/qcom/sm8550-xiaomi-fuxi-camera.dtsi
 @@ -0,0 +1,297 @@
@@ -824,10 +824,10 @@ index 000000000..d59fa7730
 +&cci0_i2c0 {
 +	clock-frequency = <400000>;
 +
-+	/* cam2 超广角：OV13B10，CCI0 主机0 / MCLK1 / reset GPIO117 / CSIPHY0 */
-+	camera@10 {
++	/* cam2 超广角：OV13B10，CCI0 主机0 / I2C 0x36 / MCLK1 / reset GPIO117 / CSIPHY0 */
++	camera@36 {
 +		compatible = "ovti,ov13b10";
-+		reg = <0x10>;
++		reg = <0x36>;  /* 厂商 sensormodule: slaveAddr 0x6c(8bit)=0x36；ID 寄存器 0x300b=0x0d42 */
 +
 +		clocks = <&camcc CAM_CC_MCLK1_CLK>;
 +		clock-names = "xvclk";
