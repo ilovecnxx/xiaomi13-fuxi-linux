@@ -637,10 +637,10 @@ index 000000000..ae6165f01
 +#include "sm8550-xiaomi-fuxi-camera.dtsi"
 diff --git a/arch/arm64/boot/dts/qcom/sm8550-xiaomi-fuxi-camera.dtsi b/arch/arm64/boot/dts/qcom/sm8550-xiaomi-fuxi-camera.dtsi
 new file mode 100644
-index 000000000..e6e3e43a4
+index 000000000..d59fa7730
 --- /dev/null
 +++ b/arch/arm64/boot/dts/qcom/sm8550-xiaomi-fuxi-camera.dtsi
-@@ -0,0 +1,292 @@
+@@ -0,0 +1,297 @@
 +// SPDX-License-Identifier: BSD-3-Clause
 +/*
 + * Xiaomi 13 (fuxi)：相机第一步——给四个模组上电并用 CCI（i2c-dev）读传感器 ID。
@@ -831,7 +831,12 @@ index 000000000..e6e3e43a4
 +
 +		clocks = <&camcc CAM_CC_MCLK1_CLK>;
 +		clock-names = "xvclk";
++		assigned-clocks = <&camcc CAM_CC_MCLK1_CLK>;
++		assigned-clock-rates = <19200000>;
 +		reset-gpios = <&tlmm 117 GPIO_ACTIVE_LOW>;
++		/* cam2_power 已禁用，GPIO101 必须由 sensor 节点自己切到 cam_mclk，否则 MCLK 出不去、读 ID NACK(-5) */
++		pinctrl-0 = <&cam_mclk1_default>;
++		pinctrl-names = "default";
 +
 +		avdd-supply = <&cam_ultra_avdd>;    /* 2.8V，GPIO91 开关 */
 +		dvdd-supply = <&vreg_l1c_1p2>;      /* 1.2V */
@@ -887,7 +892,7 @@ index 000000000..e6e3e43a4
 +	cam_mclk1_default: cam-mclk1-default-state {
 +		pins = "gpio101";
 +		function = "cam_mclk";
-+		drive-strength = <2>;
++		drive-strength = <6>;	/* 厂商 cam_sensor_mclk1_active 为 6 mA */
 +		bias-disable;
 +	};
 +
