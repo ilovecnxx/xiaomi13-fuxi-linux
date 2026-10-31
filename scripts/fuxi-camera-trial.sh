@@ -37,7 +37,8 @@ timeout 60 scripts/fuxi-ssh.sh 'uname -v; D=/sys/kernel/debug
   echo ---subdev; ls /dev/v4l-subdev* 2>&1
   echo ---media; command -v media-ctl >/dev/null && media-ctl -p -d /dev/media0 2>&1 | head -60
   echo ---clk; grep -E "cam_cc_mclk1_clk |cam_cc_cci_0_clk " $D/clk/clk_summary
-  echo ---gpio; grep -E "gpio(91|101|117) " $D/gpio' >>"$LOG" 2>&1
+  echo ---gpio; grep -E "gpio(91|101|117) " $D/gpio
+  echo ---cam; command -v cam >/dev/null && timeout 20 cam -l 2>&1 | head -20' >>"$LOG" 2>&1
 grep -iE "ov13b10" "$LOG" | tail -5
 if [ "$KEEP" = --keep ]; then say "--keep：保留试验镜像"; echo "LOG $LOG"; exit 0; fi
 say "== 刷回基线 s2idle2"

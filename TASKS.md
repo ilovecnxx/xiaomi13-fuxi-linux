@@ -221,3 +221,12 @@
   sha256 `0f3affcb530fb871e76fa4bdc982904a4b9374f570bef375ff231373cebb5f90`。
 - 下一步：用户确认后 `scripts/fuxi-camera-trial.sh work/kbuild/abl-fuxi-camera5.img`（写 recovery_b → 抓日志 → 刷回 #207 → 健康检查）。
 - 设备当前跑 **#225 camera3**（recovery_b 已是 s2idle2，下次重启即回基线），电量 87%、-255 mA 放电。
+
+## 2026-11-01 00:35 相机 App 已装；camera5 上机被权限拦截
+
+- 【已实测】手机（#225）`apt-get install` 成功，rc=0，新装 40 个包（约 16.8 MB，不卸载、不升级其他包）：
+  `gnome-snapshot` 50.0（桌面名 Snapshot，`/usr/bin/snapshot`）、`libcamera-tools` 0.7.0（`cam`）、
+  `gstreamer1.0-libcamera`、`libspa-0.2-libcamera`（PipeWire）、`libcamera-ipa`。日志 `work/claude-logs/camera-app-install-20261101-0032.log`。
+- 【推测】sensor 没 probe 成功之前，Snapshot 会显示「无摄像头」；成功后要靠 libcamera simple 管线 + 软件 ISP 出图。
+- `fuxi-camera-trial.sh` 抓日志时加了 `cam -l`。
+- 用户已确认 camera5 试验，但 `fuxi-camera-trial.sh` 被 Claude Code 自动模式权限分类器拦了两次，**没执行**，设备没有任何改动。
