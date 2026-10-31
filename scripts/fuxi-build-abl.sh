@@ -53,16 +53,19 @@ if [ "${2:-}" != "--no-kernel" ]; then
               -e SND_SOC_CS35L41_I2C -e SND_SOC_TOPOLOGY -e QCOM_APR -e SOUNDWIRE -e SOUNDWIRE_QCOM
               -e SND_SOC_WCD938X_SDW -e SND_SOC_LPASS_RX_MACRO -e SND_SOC_LPASS_TX_MACRO -e SND_SOC_LPASS_VA_MACRO
               -e PINCTRL_LPASS_LPI -e PINCTRL_SM8550_LPASS_LPI -e SND_SOC_SIMPLE_MUX)
+  # libcamera 软件 ISP 需要 dma-buf 分配器（camera5 实测缺失）
+  CAMERA_CFG=(-e I2C_QCOM_CCI -e I2C_CHARDEV -e FUXI_CAMERA_POWER -e MEDIA_SUPPORT -e MEDIA_CAMERA_SUPPORT
+              -e MEDIA_PLATFORM_SUPPORT -e MEDIA_CONTROLLER -e V4L_PLATFORM_DRIVERS -e VIDEO_DEV
+              -e VIDEO_V4L2_SUBDEV_API -e VIDEO_QCOM_CAMSS -e VIDEO_OV13B10
+              -e DMABUF_HEAPS -e DMABUF_HEAPS_SYSTEM -e UDMABUF)
   case "$FUXI_DTB" in
+    *-audio-disp-camera) VARIANT_CFG=("${DISP_CFG[@]}" "${AUDIO_CFG[@]}" "${CAMERA_CFG[@]}" -d DRM_MSM_DP) ;;
     *-audio-disp) VARIANT_CFG=("${DISP_CFG[@]}" "${AUDIO_CFG[@]}" -d DRM_MSM_DP) ;;
     *-disp) VARIANT_CFG=("${DISP_CFG[@]}" -d DRM_MSM_DP) ;;
     *-usbc) VARIANT_CFG=("${USBC_CFG[@]}") ;;
     *-desk) VARIANT_CFG=("${DISP_CFG[@]}" "${USBC_CFG[@]}" -e DRM_MSM_DP) ;;
     *-audio*) VARIANT_CFG=("${AUDIO_CFG[@]}") ;;
-    *-camera) VARIANT_CFG=(-e I2C_QCOM_CCI -e I2C_CHARDEV -e FUXI_CAMERA_POWER -e MEDIA_SUPPORT -e MEDIA_CAMERA_SUPPORT
-              -e MEDIA_PLATFORM_SUPPORT -e MEDIA_CONTROLLER -e V4L_PLATFORM_DRIVERS -e VIDEO_DEV
-              -e VIDEO_V4L2_SUBDEV_API -e VIDEO_QCOM_CAMSS -e VIDEO_OV13B10
-              -e DMABUF_HEAPS -e DMABUF_HEAPS_SYSTEM -e UDMABUF) ;;  # libcamera 软件 ISP 需要 dma-buf 分配器（camera5 实测缺失）
+    *-camera) VARIANT_CFG=("${CAMERA_CFG[@]}") ;;
     *-sleep) VARIANT_CFG=(-e SUSPEND -e PM_SLEEP) ; FUXI_PM=1 ;;
     *-full) VARIANT_CFG=("${DISP_CFG[@]}" "${USBC_CFG[@]}" "${AUDIO_CFG[@]}" -e DRM_MSM_DP) ;;
   esac

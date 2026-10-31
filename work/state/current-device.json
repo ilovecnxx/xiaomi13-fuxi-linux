@@ -4,8 +4,8 @@
   "device": "Xiaomi 13 fuxi",
   "project_goal": "Reach stable daily-use Linux on Xiaomi 13 fuxi through source-backed driver fixes, reproducible builds, staged validation and rollback-safe releases.",
   "roadmap": "docs/手机日用目标-路线图-20261029.md",
-  "updated_at": "2026-11-01T00:45+08:00",
-  "updated": "2026-11-01T00:45+08:00",
+  "updated_at": "2026-11-01T01:45+08:00",
+  "updated": "2026-11-01T01:45+08:00",
   "baseline_daily_image": "work/kbuild/abl-fuxi-s2idle2.img",
   "baseline_daily_sha256": "186e102f905dd2bbb5c3636e7f393aedb77191bbcc6b04010344d56290a4cd69",
   "recovery_b_image": "work/kbuild/abl-fuxi-s2idle2.img",
@@ -54,14 +54,14 @@
   "last_health_log": "work/claude-logs/health-20261101-003959.log（#207，3 项 FAIL 均为 WiFi 未连）",
   "kernel_repro": {
     "branch": "fuxi/20261031",
-    "commit": "c9b7bbd22",
+    "commit": "476dc80e0",
     "base_commit": "5b0764a53235d3c77e1ed674e836e1b3fe1a4b1f",
     "full_patch": "work/patches/full-tree-20261031/full-20261031.diff",
-    "full_patch_sha256": "79544f9bc229f54562d704e6ab88795c538967365b6506478cd6d73faba25f8e",
-    "verified": "反向 apply --check 无报错（2026-11-01 00:27 重导出，含 c9b7bbd22）",
+    "full_patch_sha256": "96c51693902fe36635b8293ec2d1b8af629692c17bbfbea754c9f2f4c8ff24fe",
+    "verified": "反向 apply --check 无报错（2026-11-01 01:40 重导出，含 476dc80e0 dma-coherent）",
     "cleanup_commit": "e0552c9ee",
-    "camera_commit": "c9b7bbd22（OV13B10 I2C 0x10→0x36，按厂商 sensormodule）；之前 cb0a84212 复位时序、66ecba7e2 MCLK1 pinctrl",
-    "full_patch_lines": 5410
+    "camera_commit": "c9b7bbd22（OV13B10 I2C 0x10→0x36）+ 476dc80e0（camss dma-coherent、日常全量+相机 DTB 变体）",
+    "full_patch_lines": 5427
   },
   "build_manifest": "docs/kbuild-镜像清单-20261031.md",
   "legacy_notes": "docs/历史遗留与清理记录-20261031.md",
@@ -69,10 +69,15 @@
   "device_details": "docs/设备详情快照-20261030.md",
   "last_charging_event": "docs/充电电池事件-20261031.md",
   "camera_next_image": {
-    "image": "work/kbuild/abl-fuxi-camera6.img",
-    "kernel": "#228",
-    "sha256": "13897e5eff10891d3721ba7b5cf6cc6a6a04fbf79143e3db735b41e3147dc7bf",
-    "status": "仅编译通过：camera5 + DMABUF_HEAPS/SYSTEM/UDMABUF，待用户确认后上机"
+    "image": "work/kbuild/abl-fuxi-daily-camera.img",
+    "sha256": "4b1e5f9e741631fdbfb7ab1428321994d2ffc995ec52e397347bb06ff319f4ba",
+    "status": "仅编译通过：s2idle2 显示/音频/麦克风/调频 + OV13B10 相机 + camss dma-coherent，待用户确认后上机"
   },
-  "last_camera_trial": "camera5 #227（2026-11-01 00:38）：OV13B10 在 0x36 probe 成功，libcamera simple 管线识别出摄像头；软件 ISP 因无 dma-buf 分配器被禁用。日志 work/claude-logs/trial-camera5-20261101-0037.log"
+  "last_camera_trial": "camera6 #228（2026-11-01 00:46）：dma_heap/udmabuf 就位，libcamera 认出摄像头并抓到 3 帧，但 raw 帧约 60% 字节成段变 0 —— camss 缺 dma-coherent。日志 work/claude-logs/trial-camera6-20261101-0045.log；修复后镜像 abl-fuxi-daily-camera.img 尚未上机",
+  "github": {
+    "repo": "https://github.com/ilovecnxx/xiaomi13-fuxi-linux-ubuntu26.10-kernel7.3",
+    "full_history_branch": "main",
+    "note": "2026-11-01 起全量开发历史（含 TASKS.md/补丁/脚本）推送到 main 分支；master 仍是精选公开快照",
+    "kernel_repo_note": "build/linux 内核树不进 GitHub（体积大），克隆后按 scripts/fuxi-build.sh 重新拉取/应用 work/patches"
+  }
 }

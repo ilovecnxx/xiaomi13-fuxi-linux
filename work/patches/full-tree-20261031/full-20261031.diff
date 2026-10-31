@@ -216,10 +216,10 @@ index 292392ded..0f5cacb89 100644
  	bool "Cortex-A53: 826319: System might deadlock if a write cannot complete until read data is accepted"
  	default y
 diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
-index 88230c4e0..fac679727 100644
+index 88230c4e0..1bb39f47b 100644
 --- a/arch/arm64/boot/dts/qcom/Makefile
 +++ b/arch/arm64/boot/dts/qcom/Makefile
-@@ -437,6 +437,24 @@ dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-hdk-display-card.dtb
+@@ -437,6 +437,25 @@ dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-hdk-display-card.dtb
  dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-hdk-rear-camera-card.dtb
  dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-hdk.dtb
  dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-mtp.dtb
@@ -240,6 +240,7 @@ index 88230c4e0..fac679727 100644
 +dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-xiaomi-fuxi-desk.dtb
 +dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-xiaomi-fuxi-full.dtb
 +dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-xiaomi-fuxi-camera.dtb
++dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-xiaomi-fuxi-r120idle-mic-rupdclk-audio-disp-camera.dtb
 +dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-xiaomi-fuxi-sleep.dtb
  dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-qrd.dtb
  dtb-$(CONFIG_ARCH_QCOM)	+= sm8550-samsung-q5q.dtb
@@ -637,10 +638,10 @@ index 000000000..ae6165f01
 +#include "sm8550-xiaomi-fuxi-camera.dtsi"
 diff --git a/arch/arm64/boot/dts/qcom/sm8550-xiaomi-fuxi-camera.dtsi b/arch/arm64/boot/dts/qcom/sm8550-xiaomi-fuxi-camera.dtsi
 new file mode 100644
-index 000000000..6e01f9ea0
+index 000000000..f6299b13e
 --- /dev/null
 +++ b/arch/arm64/boot/dts/qcom/sm8550-xiaomi-fuxi-camera.dtsi
-@@ -0,0 +1,297 @@
+@@ -0,0 +1,300 @@
 +// SPDX-License-Identifier: BSD-3-Clause
 +/*
 + * Xiaomi 13 (fuxi)：相机第一步——给四个模组上电并用 CCI（i2c-dev）读传感器 ID。
@@ -925,6 +926,9 @@ index 000000000..6e01f9ea0
 +&camss {
 +	vdda-phy-supply = <&vreg_l1e_0p88>;
 +	vdda-pll-supply = <&vreg_l3e_1p2>;
++	/* 厂商 msm_cam_smmu_ife 是 dma-coherent；缺了它 vb2 会在 DMA 完成后按 64B 缓存行作废，
++	 * raw 帧里 60% 的字节成段变成 0（camera6 实测） */
++	dma-coherent;
 +	status = "okay";
 +
 +	ports {
@@ -2174,6 +2178,19 @@ index 000000000..3afa8216b
 +		bootargs = "loglevel=7 log_buf_len=2M panic=0 clk_ignore_unused arm-smmu.disable_bypass=0 fbcon=font:TER16x32 console=tty0 fuxi.fb=0xB8000000,1080,2400,1080,32 rdinit=/init g_cdc.idVendor=0x0525 g_cdc.idProduct=0xa4a7 g_cdc.dev_addr=02:f0:c5:13:00:02 g_cdc.host_addr=02:f0:c5:13:00:01 panel_xiaomi_fuxi.refresh=120";
 +	};
 +};
+diff --git a/arch/arm64/boot/dts/qcom/sm8550-xiaomi-fuxi-r120idle-mic-rupdclk-audio-disp-camera.dts b/arch/arm64/boot/dts/qcom/sm8550-xiaomi-fuxi-r120idle-mic-rupdclk-audio-disp-camera.dts
+new file mode 100644
+index 000000000..b745d2e95
+--- /dev/null
++++ b/arch/arm64/boot/dts/qcom/sm8550-xiaomi-fuxi-r120idle-mic-rupdclk-audio-disp-camera.dts
+@@ -0,0 +1,7 @@
++// SPDX-License-Identifier: BSD-3-Clause
++/*
++ * 日常完整版：s2idle2 的显示/音频/麦克风/调频 + 超广角 OV13B10 相机
++ */
++#include "sm8550-xiaomi-fuxi-r120idle-mic-rupdclk-audio-disp.dts"
++#include <dt-bindings/clock/qcom,sm8550-camcc.h>
++#include "sm8550-xiaomi-fuxi-camera.dtsi"
 diff --git a/arch/arm64/boot/dts/qcom/sm8550-xiaomi-fuxi-r120idle-mic-rupdclk-audio-disp.dts b/arch/arm64/boot/dts/qcom/sm8550-xiaomi-fuxi-r120idle-mic-rupdclk-audio-disp.dts
 new file mode 100644
 index 000000000..bb4b291a8

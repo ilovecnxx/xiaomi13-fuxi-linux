@@ -245,3 +245,26 @@
 - 【仅编译通过】camera6 #228：`fuxi-build-abl.sh` 的 camera 变体加 `DMABUF_HEAPS`/`DMABUF_HEAPS_SYSTEM`/`UDMABUF`，
   `work/kbuild/abl-fuxi-camera6.img` sha256 `13897e5eff10891d3721ba7b5cf6cc6a6a04fbf79143e3db735b41e3147dc7bf`。内核源码没改。
 - 下一步：用户确认后跑 camera6 试验 + `cam -c1 --capture=3` 抓帧，再在屏幕上开 Snapshot 看画面。
+
+## 2026-11-01 00:46 camera6 实测：#228 抓到 3 帧，但 raw 帧 60% 字节成段变 0
+
+- 【已实测】#228（camera6）dma-buf 分配器已就位：`/dev/dma_heap/system`、`/dev/udmabuf` 都在，
+  libcamera 不再报 `Could not open any dma-buf provider`；simple 管线添加摄像头后 `cam -c1 --capture=3` 跑通，出 3 帧。
+  日志 `work/claude-logs/trial-camera6-20261101-0045.log`。
+- 【已实测·新卡点】抓到的 raw 帧里约 60% 的字节成段变成 0。
+  根因：厂商 `msm_cam_smmu_ife` 是 `dma-coherent`，我们的 `&camss` 缺这个属性，
+  vb2 在 DMA 完成后按 64B 缓存行做 invalidate，把还没回写的行整段作废。
+- 末尾已刷回 #207；试验镜像保留（`--keep`）。
+- 下一步：上机验证 dma-coherent 修复（见下节），确认 raw 帧不再有 0 段，再验 Snapshot 出图。
+
+## 2026-11-01 01:23 内核补  dma-coherent + 新增「日常全量+相机」DTB 变体（仅编译通过）
+
+- 内核提交 `476dc80e0`（fuxi/20261031）：`&camss` 加 `dma-coherent`（附实测注释）；
+  新增 `sm8550-xiaomi-fuxi-r120idle-mic-rupdclk-audio-disp-camera.dts`（s2idle2 的
+  显示/音频/麦克风/调频 + 超广角 OV13B10，日常整机验证相机用），Makefile 同步加 dtb 目标。
+- 全量补丁重导出：`work/patches/full-tree-20261031/full-20261031.diff`
+  sha256 `96c51693902fe36635b8293ec2d1b8af629692c17bbfbea754c9f2f4c8ff24fe`（69 个文件）。
+- 【仅编译通过】`work/kbuild/abl-fuxi-daily-camera.img`（11,182,080 B）
+  sha256 `4b1e5f9e741631fdbfb7ab1428321994d2ffc995ec52e397347bb06ff319f4ba`，**尚未上机**。
+- 下一步（需用户确认后执行）：`scripts/fuxi-flash.sh` 刷 recovery_b → 抓日志 → `cam -c1 --capture=3` 验帧 →
+  刷回 #207 基线并跑 `scripts/fuxi-health.sh --require-wifi --require-sensors`。
