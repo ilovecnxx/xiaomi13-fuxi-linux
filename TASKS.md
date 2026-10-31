@@ -200,3 +200,12 @@
   现有基础：camss 已支持 sm8550、csiphy 驱动在、fuxi 相机 dtsi 有电源树+CCI、
   `drivers/misc/fuxi-camera-power.c` 已实现并编过；缺：媒体子系统配置全关 + 没有 sensor 节点。
   具体改动步骤、DTS 片段、上机验证命令见 `docs/相机实现计划-20261031.md`。
+
+## 2026-10-31 23:25 交接：见 docs/交接-新会话-20261031-2320.md
+
+- 设备已刷回 **#207 s2idle2 基线**（23:18），USB SSH 可用，电量约 95%。
+- 今天两条线：**蜂窝**（IMS PDN 卡点固化，短消息/通话都依赖它，详见交接 §4.1/§5）与
+  **相机**（新开，OV13B10 已能 probe 到 I2C 0x10，卡在 chip ID `-5`，详见 §4.2）。
+- 构建工具链已装好（用户提供 sudo 密码，不入文件）；`fuxi-build-abl.sh` 修了
+  `CONFIG_INITRAMFS_SOURCE` 旧绝对路径问题。
+- 下一个 agent 请从交接文档 §7 的「下一步」开始，并先跑 `scripts/fuxi-agent-preflight.sh`。
