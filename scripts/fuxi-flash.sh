@@ -71,32 +71,41 @@ image_info() { # $1=路径 → 全局 ISIZE/ISHA
   ISHA=$(sha256sum "$1" | cut -d' ' -f1)
 }
 
-# 读 recovery_b 实际内容的前 min(size,12MiB) 字节的 sha256 → 全局 RB_SHA / RB_SIZE
+# recovery_b 分区大小 → 全局 RB_SIZE
 read_recovery_b() {
-  local n
   RB_SHA=""; RB_SIZE=""
   RB_SIZE=$(timeout 15 "$ADB" shell "blockdev --getsize64 $PART_PATH 2>/dev/null" </dev/null | tr -d '\r')
   case "$RB_SIZE" in ''|*[!0-9]*) RB_SIZE="" ;; esac
-  n=12582912
-  if [ -n "$RB_SIZE" ] && [ "$RB_SIZE" -lt "$n" ]; then n="$RB_SIZE"; fi
-  RB_SHA=$(timeout 90 "$ADB" shell "head -c $n $PART_PATH | sha256sum | cut -d' ' -f1" </dev/null | tr -d '\r')
-  case "$RB_SHA" in *[!0-9a-f]*) RB_SHA="" ;; esac
 }
 
-describe_rb() { # 把 RB_SHA 和 state json 里两个已知镜像比对
-  local name sha p
+# 读分区前 $1 字节的 sha256
+rb_head_sha() {
+  local n="$1" s
+  s=$(timeout 90 "$ADB" shell "head -c $n $PART_PATH | sha256sum | cut -d' ' -f1" </dev/null | tr -d '\r')
+  case "$s" in *[!0-9a-f]*) s="" ;; esac
+  printf '%s' "$s"
+}
+
+# 把 recovery_b 内容和 state json 里的已知镜像比对。
+# 注意：必须按「镜像文件自身大小」截取分区再比；分区 100MB 比镜像 10MB 长，
+# 按固定 12MiB 截会把镜像后面的旧数据算进来，误报成未知镜像（2026-10-31 踩过）。
+describe_rb() {
+  local name sha p sz
   for name in baseline_daily recovery_b; do
     if [ "$name" = baseline_daily ]; then p=$(jget '.baseline_daily_image'); else p=$(jget '.recovery_b_image'); fi
     [ -n "$p" ] || continue
     case "$p" in /*) ;; *) p="$B/$p" ;; esac
     [ -f "$p" ] || continue
+    sz=$(stat -c %s "$p" 2>/dev/null) || continue
     sha=$(sha256sum "$p" | cut -d' ' -f1)
-    if [ "$sha" = "$RB_SHA" ]; then
+    if [ "$(rb_head_sha "$sz")" = "$sha" ]; then
+      RB_SHA="$sha"
       say "  recovery_b = $name（$(basename "$p")）"
       return 0
     fi
   done
-  say "  recovery_b = 未知镜像（sha ${RB_SHA:0:16}…），不在 state json 记录的已知镜像里"
+  RB_SHA=$(rb_head_sha 10485760)
+  say "  recovery_b = 未知镜像（前 10MiB sha ${RB_SHA:0:16}…），不在 state json 记录的已知镜像里"
   return 1
 }
 
@@ -139,9 +148,9 @@ cmd_status() {
       say "  android: $(timeout 8 "$ADB" shell 'getprop ro.product.device; getprop ro.build.version.release' </dev/null | tr -d '\r' | paste -sd' ')"
       if adb_root; then
         read_recovery_b
-        if [ -n "$RB_SHA" ]; then
-          say "  分区大小 ${RB_SIZE:-?} B；内容 sha ${RB_SHA:0:16}…"
+        if [ -n "$RB_SIZE" ]; then
           describe_rb
+          say "  分区大小 $RB_SIZE B；比对内容 sha ${RB_SHA:0:16}…"
         else
           say "  读不到 recovery_b（需要 root / 分区不可读）"
         fi

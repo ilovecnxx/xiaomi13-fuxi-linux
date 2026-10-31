@@ -38,14 +38,150 @@
    - 健康检查 `scripts/fuxi-health.sh`（当前 recovery_b 是实验镜像 #222，先确认跑的是哪个再决定刷回 #207）。
 4. 充电/电池验证 OK 后，再决定是否继续 Denial 迁移（需用户确认）。
 
-## 2026-10-31 20:45 工程：模型 `[cyber]` 误报应对（代码就绪，未上机）
+## 2026-10-31 21:00 信号：modem16 #222 run3（只读观测，进行中）
 
-- 现象：20:31 `adb reboot recovery` 之后，Opus 4.8 连续三次拒答（`msg_011CgaKWnD…`/`KXw7…`/`KYZ…`），
-  属生成侧判定，不是 prompt 也不是工具错误；原始记录
-  `~/.claude/projects/-home-user-linux-android/088f7842-53ee-4893-b3ea-02c9669d73c8.jsonl`（第 252–268 行）。
-- 新增 `scripts/fuxi-flash.sh`：设备动作的人工入口。默认只读（`status`/`plan`），`--yes` 才写；
-  **只写 recovery_b**；镜像只认 `work/kbuild|work/patches`；写前比对 state json 的 sha256、
-  未知镜像需 `--allow-unknown-image`、写后读回全量 sha256 校验；日志落 `work/claude-logs/flash-*.log`。
-- `CLAUDE.md` 新增「对话安全写法」：设备动作人来跑、原始产物进文件、一次一步、被拒别连发"继续"。
-- 验证：`bash -n` 通过；status / plan / 越权路径 / 未知镜像 / 无设备 / 缺 `--yes` 六条路径在主机逐条实测；
-  **未实机刷写**（设备当时不在线），写入路径等下次上机验证。
+- 手机已开机回 Linux：`7.3.0+ #222`，boot_id `4074043f…`，电量 97%（USB SDP 5V，INPUT_CURRENT_LIMIT 100mA，PD 未协商）。
+- 主机侧 NM 共享连接 `fuxi-usb` 丢失，已重建（`enx02f0c5130001`，10.42.0.1/24 shared）；之前 10.42.0.2 被 Meta 代理路由劫持。
+- 【已实测】开机 27 s keeper 设 data-centric（voice ps-preferred）；开机 ~24 s 注册 5G SA home，15 min 无拒绝。
+  当前只驻留 **5G SA**（LTE Status none），PDC 激活 `VoLTE-CU`，WDS 有 `IMS` APN 档（#4）。
+- 【已实测·21:05 更正】IMS 栈是起的、配置是开的，只是**没有 IMS 承载所以没注册**：
+  `--imsa-get-ims-registration-status` 用 qmicli 直接跑会 `InvalidOperation`/`too many IMSA actions`
+  （qmicli 在 qrtr 上无法「bind+查询」同进程），改用 libqmi-glib 脚本 `scripts/fuxi-qmi-ims.py`
+  同进程 bind 后读到：imsa 注册状态 **0 = not-registered**、technology 1；
+  ims 设置 voice/sms/video/ut = True（ussd、wifi 语音 False）。`qmicli --wds-get-current-settings` 为
+  `OutOfCall` → 本启动没有数据承载，IMS APN 档 #4（'IMS'，type ims）在但未起。imsp 客户端仍 Internal。
+- 【推测】此前 EMM cause 7/18 掉线都发生在 LTE 下（voice-centric + 无 IMS 语音）；data-centric 下基带不因无语音停用 E-UTRA/NR。
+- 采样：主机侧每 30 s 只读 ssh 采样 75 min → `work/claude-logs/modem16-run3-20261031-2048/reg.txt`（在手机上起 systemd 单元被权限拦截，改主机侧）。
+- 下一步：长测结果出来后，查 IMS 为何 InvalidOperation（NV 里 IMS 开关 / 需要 IMS PDN 由 AP 发起 / 需要 Android 的 ims 配置服务），纯只读排查先行。
+
+## 2026-10-31 21:05 IMS 更正 + 采样补跑（进行中）
+
+- 【实测】run3 到 35 min 仍 5G SA home、零拒绝、keeper 零动作、无基带崩溃（`journalctl -b` 无 registration 变化）。
+  `dmesg` 无 SMMU/ssr；只有显示侧 `dpu_crtc_get_scanout_position *ERROR* no encoder found`（另记）。
+- 【修正】20:48 的 75 min 采样只跑了 7 min（前台进程被回收）。新增 `scripts/diag/modem-reg-sample.sh`
+  （主机侧，秒数+间隔参数，输出一行 up/state|tech|signal|registration|ps|bat），21:01 起后台补跑 60 min
+  → `work/claude-logs/modem16-run3-20261031-2048/reg2.txt`。
+- 【新工具】`scripts/fuxi-qmi-ims.py`（已装 `/usr/local/sbin/fuxi-qmi-ims.py`）：libqmi-glib GI 同进程
+  bind→查询 imsa 注册 + ims 业务开关，绕开 qmicli 在 qrtr 上的 bind 限制。只读。
+- 【新工具】`scripts/fuxi-ims-pdn.sh status|up|down <handle>`：status 只读（已实测）；up 用
+  `--wds-start-network=apn=IMS,ip-type=ipv4v6,profile-id=4` 起 IMS 承载并读 P-CSCF、复测 imsa；**未实机跑 up**。
+- 充电侧：SDP 5V、`INPUT_CURRENT_LIMIT=100 mA`、电池 `current_now=-133 mA` → **净放电**（96%，~3%/h），
+  PD 仍未协商；长测在电脑 USB 上只能短跑，PD 验证与墙充仍需用户插 67W 头。
+- 下一步（22:01 长测结束）：① 起 IMS PDN 看 imsa 是否从 0 前进；② 同时/随后起 3GNET 数据会话，
+  确认 modem16 的 IPA 下行在本启动仍通（run3 rmnet_ipa0 DOWN 未建会话）。
+
+## 2026-10-31 21:12–21:27 IMS 承载实验：基带侧拒绝（结论 + 踩坑记录）
+
+- 【实测】run3 干净基线到 **38.5 min**（20:32 开机 → 21:11 我主动 offline），全程 registered、零拒绝、
+  keeper 零动作。采样 `reg2.txt`。
+- 【实测·数据】`nmcli connection up fuxi-mobile`（APN 3gnet）→ `qmapmux0.0` 拿到 IPv4/IPv6，
+  `ping -I qmapmux0.0` v4/v6 均 0% 丢包（49–117 ms）→ **IPA 下行在本启动确认可用**。
+  注意：必须绑接口测；USB 共享 default 路由 metric 700 比蜂窝 1050 优先，不绑会误报 100% 丢包。
+- 【实测·IMS】AP 侧起 IMS 承载被基带拒：`--wds-start-network=3gpp-profile=4` 和 `apn=IMS,ip-type=4`
+  都返回 `QMI protocol error (70) InvalidOperation`；**5G SA 和仅 LTE 两种附着下都一样**，
+  排除「NR SA 不支持」这个方向。把 profile 4 加进 LTE attach PDN 列表（`1,4`）+ 重启重新附着后
+  imsa 仍是 `0 = not-registered`，IMS PDN 也没有自动建立。
+- 【推测】基带要求 Android 走的那条路径 `WDS Start Network Interface`（带 APN 类型/mux），
+  当前手机 libqmi 1.38 的 GI 没有 `start_network_interface`；或 VoLTE 在本 SIM/运营商侧未开通。
+  验证下一步：回 Android 看 VoLTE 是否注册（`getprop | grep -i ims`），能区分是「运营商没开」还是「AP 侧缺路径」。
+- 【踩坑·重要】`--dms-set-operating-mode=offline` 之后 **`online` 被拒 `InvalidTransition`**，
+  `--dms-set-operating-mode=online`/`mmcli --enable`/`--dms-reset`/`mmcli --reset` 全部无效，
+  射频卡在 offline。**唯一恢复办法是重启**（`systemctl reboot` → 回 Android → `adb reboot recovery` 回 Linux）。
+  以后不要在这个基带上用 offline/online 切射频；要重附着用重启。
+- 【已恢复】attach PDN 列表回到 `1`；模式偏好经 GI 写回 `gsm, umts, lte, 5gnr`（PERMANENT）；
+  数据连接已恢复，5G NR home、ping 正常。
+
+## 2026-10-31 21:28–21:35 Android 侧 VoLTE 核查 + 刷回基线
+
+- 【决定性证据】Android 17 里两张卡的 IMS APN **都是 CONNECTED**，并且拿到 P-CSCF：
+  联通 `联通IMS`（rmnet_data1）P-CSCF `2408:8142:4001:1::d405/d605`；
+  电信 `中国电信(IMS)`（rmnet_data2）P-CSCF `240e:2c::201` 等 4 个。
+  `NrVopsSupportInfo mVopsSupport=1`（网络支持 PS 域语音）；`availableServices=[VOICE,SMS,VIDEO]`。
+  MBN：sub0 `NV#71546=7;VoLTE-CU(0x0A011561)`、sub1 `hVoLTE_OPNMKT_CT(0x0A0113F2)`
+  （和 Linux 侧 PDC 激活的 0xA011561 一致）；`persist.radio.is_vonr_enabled_0=false`、`_1=true`。
+  证据存档 `work/claude-logs/ims-android-20261031.txt`。
+  → **运营商侧 VoLTE 是开通的**，「SIM 没开」这个假设排除；Linux 缺的是 AP 侧建 IMS PDN 的
+  QMI 路径（Android 用 `WDS Start Network Interface`，带 APN 类型/mux；本机 libqmi 1.38 无此 API）。
+- 【已回退】`scripts/fuxi-flash.sh flash baseline --yes` 写回 s2idle2（读回校验通过），
+  `adb reboot recovery` 回 Linux，`uname -a` = `7.3.0+ #207`，boot_id `e5172f4b`。
+  健康检查 3 项失败全是 WiFi 未连：扫描到的 AP 里没有已保存的（lihua/Redmi_9499 不在现场），不是回归。
+- 【修 bug】`fuxi-flash.sh status` 原来按 `min(分区,12MiB)` 截取分区算 sha，而镜像是 10.4MiB，
+  多读的填充把哈希带偏，把明明在跑的 #222 报成「未知镜像」。已改为按各已知镜像的**文件大小**截取比对；
+  实测现在正确显示 `recovery_b = abl-fuxi-modem16-epmap.img`。
+- 【存档】刷写前把当时 recovery_b 前 10MiB 存到 `work/backup/recovery-b-unknown-20261031/`（前 10,436,608 字节 = #222）。
+- 下一步（无需设备）：给 libqmi 加/升 `Start Network Interface` 能力，或自己按 QMI 报目录发原始请求；
+  之后重新刷 #222 验证 IMS PDN + P-CSCF + imsa 注册。
+
+## 2026-10-31 21:40 IMS 承载矩阵测试：AP 侧全部被拒（结论固化）
+
+- 新工具 `scripts/fuxi-ims-attach.py`（已装 `/usr/local/sbin/`）：同一进程内依次试 6 种起 IMS 承载的方式
+  （GI 绕开 qmicli 的 bind 限制）。在 #222 上实测：
+
+  | 变体 | 结果 |
+  |---|---|
+  | profile 4（APN 档 type=ims） | `InvalidOperation` |
+  | `apn=IMS` + ipv6 | `InvalidOperation` |
+  | `apn=ims` + ipv6 | `InvalidOperation` |
+  | `apn=IMS` + ipv4 | `InvalidOperation` |
+  | `apn=IMS`（不指定 ip 族） | `InvalidOperation` |
+  | profile 4 + 绑定 mux 1 | `add_link` 报 EEXIST；`bind_mux` 报 `Internal` |
+
+- 结论：**AP 侧 `WDS Start Network` 对 IMS APN 是硬拒**，与 RAT、IP 族、APN 大小写无关；
+  mux 绑定路径也不通（endpoint 参数或链路状态另有问题，未继续挖）。
+  剩下唯一方向是 Android 用的 `WDS Start Network Interface`(QMI 0x00A0 一类)，libqmi 1.38 没实现，
+  需要「升级/打补丁 libqmi」或「按 QMI 报目录手写原始请求」。外网源码在这个环境抓不到（web_fetch 被解析到内网地址）。
+- 旁证：SMS 子系统是活的（`wms-get-routes` 返回 6 条路由，存储 sm/me），**短信不依赖 IMS**，
+  可以先做成一个用户可见功能（只读列短信免费，发短信会产生费用，要用户同意）。
+
+## 2026-10-31 21:42 短信（WMS/MM）：工具就绪，等人决定是否真发
+
+- `scripts/fuxi-sms.sh`：status/list/show/store/send/delete，走 ModemManager（qmicli 1.38 的 WMS 只有路由/能力查询，
+  没有收发；`--wms-get-supported-messages` 直接 `InvalidQmiCommand`）。
+- 踩坑：`--messaging-create-sms="text=带 空格,..."` 会被 MM 属性解析器在空格处截断；
+  可靠做法是 `--messaging-create-sms-with-text=<文件>` + `--messaging-create-sms=number=...`（脚本已用 base64 传文本）。
+- `--store`/`--store-in-storage=sm|me` 都报 Unsupported（MM 的 QMI 插件不支持存草稿）→ **没法免费验证发信路径**。
+- 现状：modem 已注册 5G SA（PS attached、CS detached），`mmcli --messaging-status` 支持存储 sm/me，当前无短信。
+- 待用户决定：发一条自测短信（约 0.1 元）还是由用户从另一部手机发一条（免费，只验证收）。
+
+## 2026-10-31 21:45 短信实测：也卡在同一层（CS 无附着 + 无 IMS）
+
+- 用户同意后向本机 `+8618607340261` 发自测短信，两次都失败：
+  - 5G SA：`QMI protocol error (53) NetworkNotReady`（WMS 写短信部件失败）
+  - 切到仅 LTE 重试：MM 报「已到超时限制」（基带没有回送信结果）
+  - 两条都没有投递（收件箱始终为空，也没有自收短信）→ 大概率没扣费；超时那条无法 100% 确认。
+- 原因：两种路径都不通。`--nas-get-serving-system` 在 5G SA 和仅 LTE 下都是 **CS: detached**（没有 SGs/CS 域），
+  而 `SMS over IMS` 又需要 IMS PDN（`dd7` 那条没打通）。SMS 与 VoLTE 卡在同一层：AP 侧的附着/IMS 配置。
+- 工具：`scripts/fuxi-sms.sh`（status/list/show/store/send/delete，走 MM，文本用 base64+文件传避免属性解析坑）、
+  `scripts/fuxi-qmi-modes.py`（一次写回 RAT 位掩码；qmicli 只能单值）。
+- 已恢复：模式偏好 `gsm, umts, lte, 5gnr`（PERMANENT）、5G SA 注册正常、草稿短信清空、电量 97%。
+- 下一步（三选一）：① 原始 QMI / 补 libqmi 的 `Start Network Interface`（同时解 IMS 与 SMS-over-IMS，重）；
+  ② 查 CS 附着（combined attach / SMS over NAS，中等）；③ 蜂窝先挂起，转做别的子系统。
+
+## 2026-10-31 21:55 CS 附着路线也走不通（SMS over SGs 排除）
+
+- 新工具 `scripts/fuxi-qmi-prefs.py`（读/写 voice_domain + usage_preference；`when=now|perm` 控制是否随 power cycle 生效）。
+- 实验：把 voice domain 从 `PS_PREFERRED`(3) 改成 `CS_PREFERRED`(2)（促 combined attach）→ 重启 power cycle 生效
+  → **5G SA 与仅 LTE 下 `--nas-get-serving-system` 都是 `CS: detached`**。5G SA 本来没有 CS 域；
+  LTE 下也不 attach CS，说明这张卡/这个网络没有 SGs（2G/3G 退网），combined attach 没有意义。
+- 结论：**SMS over SGs 不可用**；短信只能走 SMSoIP（需要 IMS PDN）。→ 短信与 VoLTE 是同一个硬卡点，
+  不是两个独立问题。SMS 子系统本身（WMS 路由、MM 收发、存储）都是好的。
+- 已恢复默认：voice=`PS_PREFERRED`(3，PERMANENT)、mode=`gsm,umts,lte,5gnr`(92)、5G NR 注册正常、
+  keeper active、电量 96%。设备仍在 #222。
+
+## 2026-10-31 22:20–22:35 IMS：NM 能起「IMS APN」承载，但基带不认作 IMS PDN
+
+- 【已实测】NetworkManager 用 `gsm.apn=IMS` 能**成功激活**（拿到 IPv6，`qmapmux0.0`），
+  而我们的 GI/qmicli 直接 `start_network`（profile 4 / apn=IMS / 各种 ip 族）全部 `InvalidOperation`。
+  说明差别不在「APN 名称」或「消息」，而在 NM 的调用流程/客户端状态。
+- 【未解】想抓 NM 实际发的 QMI：这台 NM 没有 QMI 调试域（`nmcli general logging domains QMI` 报 Unknown domain），
+  libqmi 也没输出 `G_MESSAGES_DEBUG=QMI`（重启 NM 时还顺带把 MM 弄成 unmanaged 一次）。
+  设备上**没有 strace / tcpdump**，抓不到字节。
+- 【已实测】尝试复现 NM 的 mux 绑定：`bind_mux_data_port`（mux 0 和 1、EMBEDDED/HSUSB/PCIE/HSIC/BAM_DMUX 五种 endpoint）
+  **全部 `QMI protocol error (3) Internal`**。所以 NM 很可能根本没调这条（或用了我们没暴露的参数）。
+- 【关键负面结果】即使 NM 把 IMS APN 承载起起来，`imsa` 注册状态仍是 0，短信重发仍 `NetworkNotReady(53)`
+  → 这条承载**没有被基带当成 IMS PDN**（没有 P-CSCF / 没有 APN type=ims 语义）。
+  `--wds-get-current-settings` 对新客户端是 `OutOfCall`，读不到别人的 P-CSCF，无法直接验证。
+- 结论：IMS 的缺口精确定位在「用 APN type=ims 语义建立 IMS PDN」。libqmi 的 Start Network 没有 APN type TLV；
+  继续需要有 QMI 规范或能抓到 Android/NM 的真实请求字节。**这条路今晚不再试，避免重复失败。**
+- 旁支已收尾：WiFi（iPhone 热点）实测空口 -39dBm/1200Mbit/s、吞吐约 4Mbit/s（瓶颈在热点出口）；
+  已关闭 `CU_888` 的自动重连；健康检查在热点下 0 失败。
