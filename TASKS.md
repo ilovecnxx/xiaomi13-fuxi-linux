@@ -37,3 +37,15 @@
      电池 CURRENT_NOW 是否几 A 级；不达标则查 charger_pd（ADSP）与 pmic_glink。
    - 健康检查 `scripts/fuxi-health.sh`（当前 recovery_b 是实验镜像 #222，先确认跑的是哪个再决定刷回 #207）。
 4. 充电/电池验证 OK 后，再决定是否继续 Denial 迁移（需用户确认）。
+
+## 2026-10-31 20:45 工程：模型 `[cyber]` 误报应对（代码就绪，未上机）
+
+- 现象：20:31 `adb reboot recovery` 之后，Opus 4.8 连续三次拒答（`msg_011CgaKWnD…`/`KXw7…`/`KYZ…`），
+  属生成侧判定，不是 prompt 也不是工具错误；原始记录
+  `~/.claude/projects/-home-user-linux-android/088f7842-53ee-4893-b3ea-02c9669d73c8.jsonl`（第 252–268 行）。
+- 新增 `scripts/fuxi-flash.sh`：设备动作的人工入口。默认只读（`status`/`plan`），`--yes` 才写；
+  **只写 recovery_b**；镜像只认 `work/kbuild|work/patches`；写前比对 state json 的 sha256、
+  未知镜像需 `--allow-unknown-image`、写后读回全量 sha256 校验；日志落 `work/claude-logs/flash-*.log`。
+- `CLAUDE.md` 新增「对话安全写法」：设备动作人来跑、原始产物进文件、一次一步、被拒别连发"继续"。
+- 验证：`bash -n` 通过；status / plan / 越权路径 / 未知镜像 / 无设备 / 缺 `--yes` 六条路径在主机逐条实测；
+  **未实机刷写**（设备当时不在线），写入路径等下次上机验证。
